@@ -50,8 +50,10 @@ References:
 ## 3. Setup
 1. Install the bridge: follow `bridge/README.md` (macOS and Windows).
 2. Generate the tech-tree file once per game version:
-   1. Create a venv with UnityPy: `python3 -m venv ~/.cache/tfwr/venv && ~/.cache/tfwr/venv/bin/pip install UnityPy`.
-   2. Run `~/.cache/tfwr/venv/bin/python -I scripts/extract_tech_tree.py -o references/tech_tree.json --check`. It reads only the game's unlock records.
+   1. Create a venv with UnityPy: `python3 -m venv ~/.cache/tfwr/venv`, then install UnityPy with that venv's pip.
+   2. Run the extractor with that venv's Python: `-I scripts/extract_tech_tree.py -o references/tech_tree.json --check`. It reads only the game's unlock records.
+   3. The venv's programs live in `bin/` on macOS and Linux, and in `Scripts\` on Windows (`Scripts\python.exe`, `Scripts\pip.exe`).
+   4. If a tool can't find the game or your saves, set `TFWR_LANGUAGES` or `TFWR_SAVES`. With the bridge running, the tools ask the game for its save folder first.
 3. Run `python3 bridge/client/tfwr_bridge.py ping`. Exit code 2 means no bridge: check that the game runs with BepInEx (bridge README).
 4. For a fresh campaign, run `tfwr_bridge.py new-run`, then `scripts/journal.py init`.
 

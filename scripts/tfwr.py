@@ -26,23 +26,55 @@ import sys
 
 HOME = os.path.expanduser("~")
 
-INSTALL_CANDIDATES = [
-    # macOS
-    HOME + "/Library/Application Support/Steam/steamapps/common/The Farmer Was Replaced/"
-    "TheFarmerWasReplaced.app/Contents/Resources/Data/StreamingAssets/Languages",
-    # Windows (default Steam library)
-    "C:/Program Files (x86)/Steam/steamapps/common/The Farmer Was Replaced/"
-    "TheFarmerWasReplaced_Data/StreamingAssets/Languages",
-    # Linux (native Steam / Proton)
-    HOME + "/.steam/steam/steamapps/common/The Farmer Was Replaced/"
-    "TheFarmerWasReplaced_Data/StreamingAssets/Languages",
-    HOME + "/.local/share/Steam/steamapps/common/The Farmer Was Replaced/"
-    "TheFarmerWasReplaced_Data/StreamingAssets/Languages",
+GAME = "The Farmer Was Replaced"
+LANG_SUBDIRS = [
+    "TheFarmerWasReplaced.app/Contents/Resources/Data/StreamingAssets/Languages",  # macOS
+    "TheFarmerWasReplaced_Data/StreamingAssets/Languages",  # Windows and Linux
 ]
+
+
+def steam_roots():
+    """Steam's own folders for this OS, most likely first."""
+    if sys.platform == "darwin":
+        return [os.path.join(HOME, "Library", "Application Support", "Steam")]
+    if sys.platform.startswith("win"):
+        roots = [os.path.join(os.environ[v], "Steam") for v in ("ProgramFiles(x86)", "ProgramFiles")
+                 if os.environ.get(v)]
+        return roots + ["C:/Program Files (x86)/Steam", "C:/Program Files/Steam"]
+    return [os.path.join(HOME, ".steam", "steam"), os.path.join(HOME, ".local", "share", "Steam")]
+
+
+def steam_libraries():
+    """Every Steam library: each root plus the "path" entries in its libraryfolders.vdf.
+
+    Games often live in a second library (e.g. D:/SteamLibrary), so the default root is not enough.
+    """
+    libs = []
+    for root in steam_roots():
+        libs.append(root)
+        vdf = os.path.join(root, "steamapps", "libraryfolders.vdf")
+        try:
+            with open(vdf, encoding="utf-8", errors="replace") as f:
+                for m in re.finditer(r'"path"\s+"([^"]+)"', f.read()):
+                    # vdf escapes each backslash ("D:\\SteamLibrary"); collapse any run of them.
+                    libs.append(os.path.normpath(re.sub(r"\\+", "/", m.group(1))))
+        except OSError:
+            pass
+    out = []
+    for lib in libs:
+        if lib not in out:
+            out.append(lib)
+    return out
+
+
+def install_candidates():
+    return [os.path.join(lib, "steamapps", "common", GAME, sub) for lib in steam_libraries() for sub in LANG_SUBDIRS]
+
 
 SAVE_CANDIDATES = [
     HOME + "/Library/Application Support/com.TheFarmerWasReplaced.TheFarmerWasReplaced/Saves",
     os.path.expandvars("%USERPROFILE%/AppData/LocalLow/TheFarmerWasReplaced/TheFarmerWasReplaced/Saves"),
+    HOME + "/.config/unity3d/TheFarmerWasReplaced/TheFarmerWasReplaced/Saves",
     HOME + "/.steam/steam/steamapps/compatdata/2060160/pfx/drive_c/users/steamuser/AppData/"
     "LocalLow/TheFarmerWasReplaced/TheFarmerWasReplaced/Saves",
 ]
@@ -50,15 +82,27 @@ SAVE_CANDIDATES = [
 
 def languages_dir():
     env = os.environ.get("TFWR_LANGUAGES")
-    for p in ([env] if env else []) + INSTALL_CANDIDATES:
+    for p in ([env] if env else []) + install_candidates():
         if p and os.path.isdir(p):
             return p
     return None
 
 
+def bridge_data_dir():
+    """The game's own data folder, from the bridge's ping; None when the bridge is down."""
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bridge", "client"))
+        from tfwr_bridge import Bridge
+        return Bridge(timeout=1).call("ping").get("data_dir")
+    except Exception:
+        return None
+
+
 def saves_dir():
+    """TFWR_SAVES, then the running game's own data folder, then the usual locations per OS."""
     env = os.environ.get("TFWR_SAVES")
-    for p in ([env] if env else []) + SAVE_CANDIDATES:
+    live = bridge_data_dir()
+    for p in ([env] if env else []) + ([os.path.join(live, "Saves")] if live else []) + SAVE_CANDIDATES:
         if p and os.path.isdir(p):
             return p
     return None
