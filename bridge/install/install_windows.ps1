@@ -38,7 +38,9 @@ if (-not $GameDir) {
 if (-not $GameDir -or -not (Test-Path (Join-Path $GameDir $Exe))) {
     Write-Error "Can't find $Exe. Pass -GameDir with the game folder."
 }
-if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+$sdks = if (Get-Command dotnet -ErrorAction SilentlyContinue) { & dotnet --list-sdks 2>$null } else { @() }
+# The dotnet host alone is not enough: the build needs an SDK, version 8 or later.
+if (-not ($sdks | Where-Object { $_ -match '^(\d+)\.' -and [int]$Matches[1] -ge 8 })) {
     Write-Error "The build needs the .NET SDK 8 or later: https://dotnet.microsoft.com/download"
 }
 

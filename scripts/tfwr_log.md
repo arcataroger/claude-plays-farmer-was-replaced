@@ -25,6 +25,14 @@ for i in range(n):
 quick_print("PHASE sweep t", get_time(), "work", done, "left", n - done)
 ```
 
+## Before Debug and Timing
+
+The convention needs unlocks a fresh save lacks: `quick_print` needs Debug, `get_time` needs Timing, and counting needs Variables.
+1. Before Debug, print the same line with `print()`; it works from the start and also reaches the log.
+2. Before Timing, write `t -1`.
+3. Before Variables, you can't count work. Keep runs short, watch them, and read the inventory between runs (`tfwr_bridge.py inventory`).
+4. The linter's no-log warning starts once the save owns Debug; `precheck.py` and the driver need the full convention.
+
 ## Zero work is an anomaly
 
 A phase that reports `work 0` did nothing. Treat it as a bug until you can explain it.

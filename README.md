@@ -15,7 +15,7 @@ Unofficial fan project. It is not affiliated with or endorsed by the game's deve
 ## Install
 Prerequisites:
 - the game on Steam (macOS or Windows);
-- Python 3.9 or newer;
+- Python 3.9 or newer (`python3` on macOS and Linux, `python` on Windows);
 - the .NET SDK, to build the bridge;
 - Claude Code, or another agent harness that loads skills.
 

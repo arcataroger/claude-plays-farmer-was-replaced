@@ -462,7 +462,7 @@ class Linter(ast.NodeVisitor):
         if self.save_dir:
             user = {x.id for x in ast.walk(tree) if isinstance(x, ast.Name) and isinstance(x.ctx, ast.Store)}
             self.f += unlock_findings(tree, self.save_dir, user | self._user_funcs)
-        self.f += method_findings(tree)
+        self.f += method_findings(tree, _owns(self.save_dir, "debug"))
         if self.jump_calls > 1:
             self.f.append(Finding("warning", "?", "jump() appears %d times; it works once per program run." % self.jump_calls,
                                   "error_can_only_jump_once"))
@@ -507,13 +507,25 @@ def _int_literal(node):
         and float(node.value).is_integer()
 
 
-def method_findings(tree):
+def _owns(save_dir, unlock_id):
+    """True when the save owns the unlock, or when no save was given (assume a late game)."""
+    if not save_dir:
+        return True
+    try:
+        with open(os.path.join(save_dir, "save.json"), encoding="utf-8") as f:
+            ids = json.load(f).get("unlocks", [])
+    except (OSError, ValueError):
+        return True
+    return any(u == unlock_id or re.match(re.escape(unlock_id) + r"_\d+$", u) for u in ids)
+
+
+def method_findings(tree, debug_owned=True):
     found = []
     funcs = {fn.name: fn for fn in ast.walk(tree) if isinstance(fn, ast.FunctionDef)}
     # no-log: one warning per file, at the first acting loop.
     has_tag = any(isinstance(c, ast.Constant) and isinstance(c.value, str) and c.value.lstrip().startswith(LOG_TAGS)
                   for c in ast.walk(tree))
-    if not has_tag and not _is_library(tree):
+    if not has_tag and debug_owned and not _is_library(tree):
         acting = ACTIONS | _reaching(funcs, ACTIONS)
         loops = sorted((n for n in ast.walk(tree) if isinstance(n, (ast.For, ast.While))), key=lambda n: n.lineno)
         for lp in loops:
@@ -570,9 +582,10 @@ def unlock_findings(tree, save_dir, user_names):
         m = None if u in node_ids else re.match(r"(.+)_(\d+)$", u)  # debug_2 is an id
         uid, n = (m.group(1), int(m.group(2))) if m else (u, 1)
         level[uid] = max(level.get(uid, 0), n)
-    grants, enum = {}, {}
+    grants, enum, reqs = {}, {}, {}
     for v in nodes:
         enum[v["id"]] = v.get("enum_name_guess") or v["id"].title()
+        reqs[v["id"]] = [(r["id"], r.get("level", 1)) for r in (v.get("requires") or [])]
         for g in v.get("grants") or []:
             grants.setdefault(g["name"].lower(), []).append((v["id"], g["level"]))
     # Variables and Import grant no names; they gate assignment and `import`.
@@ -580,24 +593,32 @@ def unlock_findings(tree, save_dir, user_names):
     grants.setdefault("import", []).append(("import", 1))
 
     def missing(name):
-        """None if owned or unknown, else the cheapest (unlock id, level) that grants it."""
+        """None if owned or unknown, else the cheapest visible (unlock id, level) that grants it.
+
+        Several nodes can grant one name. Fair play: name only a node the player can
+        see (owned, or every prerequisite met); otherwise return ("?", 0).
+        """
         name = name.lower()
         if name in level:
             return None
         ways = grants.get(name)
         if not ways or any(level.get(uid, 0) >= lv for uid, lv in ways):
             return None
-        return min(ways, key=lambda w: w[1])
+        seen_ways = [w for w in ways if level.get(w[0], 0) > 0
+                     or all(level.get(r, 0) >= rl for r, rl in reqs.get(w[0], []))]
+        return min(seen_ways, key=lambda w: w[1]) if seen_ways else ("?", 0)
 
     found, seen = [], set()
 
     def report(node, what, need):
         if need and what not in seen:
             seen.add(what)
-            lv = " level %d" % need[1] if need[1] > 1 else ""
-            found.append(Finding("error", getattr(node, "lineno", "?"),
-                                 "%s needs Unlocks.%s%s, which this save doesn't have yet." % (what, enum.get(need[0], need[0]), lv),
-                                 "error_not_unlocked"))
+            if need[0] == "?":
+                msg = "%s needs an unlock you can't see in the tech tree yet." % what
+            else:
+                lv = " level %d" % need[1] if need[1] > 1 else ""
+                msg = "%s needs Unlocks.%s%s, which this save doesn't have yet." % (what, enum.get(need[0], need[0]), lv)
+            found.append(Finding("error", getattr(node, "lineno", "?"), msg, "error_not_unlocked"))
 
     for node in ast.walk(tree):
         for types, gname, what in SYNTAX:

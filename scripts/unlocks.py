@@ -51,7 +51,25 @@ def save_data(argv):
     sys.exit("no save json found")
 
 
+def live_inventory():
+    """Item counts straight from the running game, or None when the bridge is down."""
+    try:
+        sys.path.insert(0, os.path.join(HERE, "..", "bridge", "client"))
+        from tfwr_bridge import Bridge
+        r = Bridge(timeout=2).call("inventory")
+        items = r.get("items", r)
+        return {"_".join(p.capitalize() for p in str(k).split("_")): v
+                for k, v in items.items() if k != "ok"}
+    except Exception:
+        return None
+
+
 def inventory(argv):
+    live = live_inventory()
+    if live is not None:
+        return live
+    sys.stderr.write("note: bridge not reachable; item counts come from the save file, "
+                     "which lags until the game saves (tfwr_bridge.py save).\n")
     _, items = save_data(argv)
     inv = {}
     for it in items:

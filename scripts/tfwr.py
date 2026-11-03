@@ -235,6 +235,26 @@ def cmd_doc(argv):
     hits = [p for p in pages if os.path.relpath(p, docs)[:-3].lower() == name]
     hits = hits or [p for p in pages if os.path.basename(p)[:-3].lower() == name.split("/")[-1]]
     hits = hits or [p for p in pages if name in os.path.relpath(p, docs).lower()]
+    if not hits and "/" in name:
+        # Doc links like objects/carrot point at tooltip strings, not pages.
+        kind, key = name.split("/", 1)
+        if kind == "functions":
+            return cmd_fn([key])
+        strings = os.path.join(lang, "EN", "Strings")
+        found = []
+        for fn in sorted(glob.glob(os.path.join(strings, "*.txt"))):
+            with open(fn, encoding="utf-8") as f:
+                for line in f:
+                    m = re.match(r"^@(\w+?)_%s = (.*)" % re.escape(key), line.strip(), re.I)
+                    if m:
+                        found.append("%s: %s" % (m.group(1), m.group(2)))
+        if found:
+            print("=== %s (tooltip strings)" % name)
+            print("\n".join(found))
+            if kind == "objects":
+                print("Costs: the game fills them in live. Read them from the link in-game, "
+                      "or with get_cost(Entities.X) once you own Costs.")
+            return
     if not hits:
         sys.exit("No doc page matches %r. Run 'doc' with no name to list pages." % name)
     for p in hits[:3]:

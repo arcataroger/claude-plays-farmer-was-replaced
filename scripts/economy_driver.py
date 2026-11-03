@@ -217,6 +217,29 @@ def lint_farms(reg, workdir):
     return bad
 
 
+def missing_unlocks(bridge, workdir):
+    """Lints the driver's own in-game code against the current save.
+
+    The driver needs Debug (quick_print), Costs (get_cost), Auto_Unlock (unlock)
+    and the core language unlocks. On a fresh save they come later, so the early
+    game is played by hand. Returns the linter's missing-unlock lines, or [].
+    """
+    try:
+        bridge.save()
+        info = bridge.ping()
+        slot_dir = os.path.join(info["data_dir"], "Saves", info["active_save"])
+    except Exception:
+        return []  # no live save to check (tests, or an old plugin): let the probes decide
+    d = os.path.join(workdir, "lint")
+    os.makedirs(d, exist_ok=True)
+    p = os.path.join(d, "driver_code.py")
+    with open(p, "w", encoding="utf-8") as f:
+        f.write(STOCK + LEVELS + COSTS % "[]" + BUYER % ("{}", "[]"))
+    r = subprocess.run([sys.executable, os.path.join(HERE, "lint_tfwr.py"), "--save-dir", slot_dir, p],
+                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+    return [ln.strip() for ln in r.stdout.splitlines() if "unlock" in ln.lower() and "ERROR" in ln.upper()]
+
+
 # ---------- visibility (fair play: never act on hidden ???? nodes) ----------
 
 def load_tree(path):
@@ -561,6 +584,13 @@ def main(argv=None, bridge_factory=None):
         bridge = bridge_factory()
     except OSError as e:
         print("cannot reach the bridge: %s" % e)
+        return 2
+    missing = missing_unlocks(bridge, wd)
+    if missing:
+        print("The driver can't run on this save yet. Its own probes need unlocks you don't own:")
+        for ln in missing[:12]:
+            print("  " + ln)
+        print("Play the early game by hand until you own them (SKILL.md, section 4), then start the driver again.")
         return 2
     d = Driver(reg, wd, bridge, ff, a.remeasure, tree)
     d.beat("starting")

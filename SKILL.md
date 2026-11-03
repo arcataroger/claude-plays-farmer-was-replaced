@@ -30,7 +30,7 @@ The line runs between **game metadata** and **world state**. Metadata is what a 
 2. The drone senses only through its own calls (`get_ground_type`, `measure`, `get_pos_z(dir)`, ...). Never feed what you saw or hovered into a drone script.
 
 ## 2. Tools
-Run these from the skill directory. Each prints help with `-h`.
+Run these from the skill directory. Each prints help with `-h`. On Windows, type `python` where this skill writes `python3`.
 1. `python3 scripts/tfwr.py status|doc [page]|fn NAME|errors [text]|output`: save summary, doc pages, builtin tooltips, error strings, the output log.
 2. `python3 scripts/unlocks.py next|info|levels|plan|probe|parse`: buyable nodes with costs and shortfall, node details, budget plans. They read `references/tech_tree.json`, which you generate locally (section 3) and which shows only visible nodes.
 3. `python3 scripts/achievements.py [--json]`: your Steam achievements, unlocked and locked, with hidden ones hidden.
@@ -59,7 +59,7 @@ References:
 
 ## 4. The campaign loop
 Play as one self-pacing loop with three phases. Apply sections 5–7 inside every phase.
-1. **Phase 1: max the tech tree.** Buy every visible node to its max level. Look ahead only at visible nodes. Done when no unlock has a next-level cost (check in-game with `get_cost` over `Unlocks`).
+1. **Phase 1: max the tech tree.** Buy every visible node to its max level. Drive the early game by hand: the economy driver and the log convention need Debug, Costs, Auto_Unlock and the core language unlocks first. The driver says which are missing. Look ahead only at visible nodes. Done when no unlock has a next-level cost (check in-game with `get_cost` over `Unlocks`).
 2. **Phase 2: unlock every revealed achievement.** Run `scripts/achievements.py`. Take the cheap ones first, then the puzzles, then the volume goals (feed them to the economy driver as `targets`). Re-run the tool after each one to confirm Steam recorded it.
 3. **Phase 3: climb the leaderboards.** Score your board programs by their seeded `simulate()` time, not by rank. Improve the board with the largest gap between your time and your best idea's estimate.
 4. **Cycle.** A game update, new DLC, or a newly visible node or achievement sends the loop back to the earliest phase with work left.
