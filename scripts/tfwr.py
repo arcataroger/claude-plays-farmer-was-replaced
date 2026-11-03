@@ -71,6 +71,23 @@ def install_candidates():
     return [os.path.join(lib, "steamapps", "common", GAME, sub) for lib in steam_libraries() for sub in LANG_SUBDIRS]
 
 
+def game_build():
+    """Steam's build id for the installed game (appmanifest_2060160.acf), or None.
+
+    Steam can update the game mid-project; runs must record which build they played.
+    """
+    for lib in steam_libraries():
+        acf = os.path.join(lib, "steamapps", "appmanifest_2060160.acf")
+        try:
+            with open(acf, encoding="utf-8", errors="replace") as f:
+                m = re.search(r'"buildid"\s+"(\d+)"', f.read())
+            if m:
+                return m.group(1)
+        except OSError:
+            pass
+    return None
+
+
 SAVE_CANDIDATES = [
     HOME + "/Library/Application Support/com.TheFarmerWasReplaced.TheFarmerWasReplaced/Saves",
     os.path.expandvars("%USERPROFILE%/AppData/LocalLow/TheFarmerWasReplaced/TheFarmerWasReplaced/Saves"),

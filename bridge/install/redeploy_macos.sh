@@ -90,6 +90,13 @@ if pgrep -f "$game_proc" > /dev/null; then
     exit 1
 fi
 
+# 4b. Keep the app's code signature intact. Any extra file inside the bundle (early
+#     BepInEx runs wrote preloader_*.log into Contents/MacOS) makes macOS call the app
+#     "damaged" and refuse to open it (2026-11-03). Move strays to our log folder.
+for f in "$game_dir"/*.app/Contents/MacOS/preloader_*.log; do
+    [[ -e "$f" ]] && mv "$f" "$logs/" && say "moved a stray $(basename "$f") out of the app bundle"
+done
+
 # 5. Relaunch, detached from this script's output so the caller never waits on it.
 #    Redirect the whole subshell, not just the command inside it. On macOS the
 #    subshell lingers as the game's parent; if it keeps our stdout, a caller

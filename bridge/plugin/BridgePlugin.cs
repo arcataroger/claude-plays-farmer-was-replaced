@@ -78,13 +78,33 @@ namespace TfwrBridge
         private static readonly FieldInfo MinZoomField = typeof(Workspace).GetField("minCanvasScaleFactor", Private);
         private static readonly FieldInfo MaxZoomField = typeof(Workspace).GetField("maxCanvasScaleFactor", Private);
 
+        // Steam's build id for this game, read from appmanifest_2060160.acf in the
+        // steamapps folder above the game's data folder; null when not found.
+        private static string SteamBuildId()
+        {
+            try
+            {
+                var dir = new DirectoryInfo(Application.dataPath);
+                while (dir != null && !string.Equals(dir.Name, "steamapps", StringComparison.OrdinalIgnoreCase)) dir = dir.Parent;
+                if (dir == null) return null;
+                string acf = Path.Combine(dir.FullName, "appmanifest_2060160.acf");
+                if (!File.Exists(acf)) return null;
+                var m = System.Text.RegularExpressions.Regex.Match(File.ReadAllText(acf), "\"buildid\"\\s+\"(\\d+)\"");
+                return m.Success ? m.Groups[1].Value : null;
+            }
+            catch (Exception) { return null; }
+        }
+
         private void Awake()
         {
             port = Config.Bind("Server", "Port", 7777, "Loopback TCP port for the bridge.");
             dataDir = Application.persistentDataPath;
             Job.Finished = AuditCommand;
+            // Record the game build: Steam can update the game mid-project (2026-11-03),
+            // and benchmark runs must say which build they played.
             Audit("plugin_start", Kv("plugin", Version), Kv("unity", Application.unityVersion),
-                  Kv("platform", Application.platform.ToString()));
+                  Kv("platform", Application.platform.ToString()), Kv("game_version", Application.version),
+                  Kv("steam_buildid", SteamBuildId()));
             serving = true;
             var thread = new Thread(Serve) { IsBackground = true, Name = "TfwrBridge" };
             thread.Start();
@@ -1613,6 +1633,25 @@ namespace TfwrBridge
             return farm.xMin >= 0f && farm.xMax <= Screen.width && farm.yMin >= Screen.height * 0.08f && farm.yMax <= Screen.height * 0.92f;
         }
 
+        // Zoom growth needs hysteresis: growing also widens the code windows, which can
+        // force a shrink right back. Grow at most every 20 s, and never within 60 s of a
+        // shrink (2026-11-04: shrink-only zoom ratcheted down to unreadable on a 4K TV).
+        private float lastShrinkAt = -999f, lastGrowAt = -999f;
+        private const float GrowWhenFitAbove = 1.6f, MaxTidyZoom = 0.6f;
+
+        private float FitScale(Rect farm)
+        {
+            float left = Mathf.Max(columnRight, 0f) + 16f;
+            return Mathf.Min((Screen.width - left) * 0.92f / farm.width, Screen.height * 0.72f / farm.height);
+        }
+
+        private bool TooSmall(Rect farm)
+        {
+            float now = Time.unscaledTime;
+            return FitScale(farm) > GrowWhenFitAbove && Ws.cameraController.zoom < MaxTidyZoom - 0.01f
+                   && now - lastShrinkAt > 60f && now - lastGrowAt > 20f;
+        }
+
         private void StepTidy()
         {
             if (!tidyGuard || centerJob != null || Time.unscaledTime < nextTidy) return;
@@ -1621,13 +1660,26 @@ namespace TfwrBridge
             if (ws == null || !ws.gameObject.activeInHierarchy) return;
             if (TransitionTargetField?.GetValue(ws) != null) return;
             if (Input.GetMouseButton(0) || Input.GetMouseButton(1) || Input.GetMouseButton(2)) return;
-            if (!TryFarmScreenBounds(out Rect farm) || (!Covered(farm) && OnScreen(farm) && KeptVisible())) return;
+            if (!TryFarmScreenBounds(out Rect farm)) return;
+            bool small = TooSmall(farm);
+            if (!small && !Covered(farm) && OnScreen(farm) && KeptVisible()) return;
             Arrange(TidyColumn, tidyKeep);
-            if (!TryFarmScreenBounds(out farm) || (!Covered(farm) && OnScreen(farm))) return;
+            if (!TryFarmScreenBounds(out farm)) return;
+            small = TooSmall(farm);
+            if (!small && !Covered(farm) && OnScreen(farm)) return;
             float left = Mathf.Max(columnRight, 0f) + 16f;
-            float scale = Mathf.Min((Screen.width - left) * 0.92f / farm.width, Screen.height * 0.72f / farm.height);
+            float scale = FitScale(farm);
             float z = ws.cameraController.zoom;
-            if (scale < 0.97f && z > 0.081f) Zoom(Mathf.Clamp(z * scale, 0.08f, 0.6f));  // only shrink: zoom also grows the windows
+            if (scale < 0.97f && z > 0.081f)
+            {
+                Zoom(Mathf.Clamp(z * scale, 0.08f, MaxTidyZoom));
+                lastShrinkAt = Time.unscaledTime;
+            }
+            else if (small)
+            {
+                Zoom(Mathf.Clamp(z * scale * 0.9f, 0.08f, MaxTidyZoom));
+                lastGrowAt = Time.unscaledTime;
+            }
             StartCentering(new Job { Args = new[] { "tidy" } }, (left + Screen.width) * 0.5f / Screen.width, 0.5f);
         }
 

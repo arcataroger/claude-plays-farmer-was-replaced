@@ -36,6 +36,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "bridge", "client"))
 import tfwr_bridge  # noqa: E402
+import tfwr  # noqa: E402
 
 DEFAULT_ROOT = os.path.join(os.path.expanduser("~"), "tfwr-journal")
 
@@ -131,6 +132,8 @@ def cmd_init(args):
         "unity": info["unity"],
         "plugin": info["plugin"],
         "platform": info["platform"],
+        "game_version": info.get("game_version"),
+        "steam_buildid": tfwr.game_build(),
     })
     write_json(os.path.join(run, "steps", "000-fresh-save", "step.json"), {
         "goal": "starting state", "result": "success", "unlocks": unlocks, "items": items,
