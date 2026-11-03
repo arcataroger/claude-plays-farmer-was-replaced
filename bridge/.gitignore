@@ -1,0 +1,6 @@
+vendor/
+plugin/bin/
+plugin/obj/
+dist/
+*.png
+__pycache__/

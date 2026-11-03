@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Builds the BepInEx 5 plugin. The game's DLLs are build-time references only;
+    we never copy or redistribute them.
+    The install scripts pass GameDir, the folder that holds the game. Override any path
+    on the command line when the defaults don't match:
+      dotnet build -c Release -p:GameDir="/path/to/The Farmer Was Replaced"
+      dotnet build -c Release -p:GameManagedDir=/path/to/Managed -p:BepInExCoreDir=/path/to/BepInEx/core
+    BepInExCoreDir defaults to bridge/vendor/BepInEx/core (the install scripts fill it),
+    else to the BepInEx/core folder inside the game.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>TfwrBridge</AssemblyName>
+    <RootNamespace>TfwrBridge</RootNamespace>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <!-- The default Steam library on each OS. -->
+  <PropertyGroup Condition="'$(GameDir)' == '' And $([MSBuild]::IsOSPlatform('OSX'))">
+    <GameDir>$(HOME)/Library/Application Support/Steam/steamapps/common/The Farmer Was Replaced</GameDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(GameDir)' == '' And $([MSBuild]::IsOSPlatform('Windows'))">
+    <GameDir>C:\Program Files (x86)\Steam\steamapps\common\The Farmer Was Replaced</GameDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(GameDir)' == '' And $([MSBuild]::IsOSPlatform('Linux'))">
+    <GameDir>$(HOME)/.steam/steam/steamapps/common/The Farmer Was Replaced</GameDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(GameManagedDir)' == '' And $([MSBuild]::IsOSPlatform('OSX'))">
+    <GameManagedDir>$(GameDir)/TheFarmerWasReplaced.app/Contents/Resources/Data/Managed</GameManagedDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(GameManagedDir)' == ''">
+    <GameManagedDir>$(GameDir)/TheFarmerWasReplaced_Data/Managed</GameManagedDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(BepInExCoreDir)' == '' And Exists('$(MSBuildThisFileDirectory)../vendor/BepInEx/core/BepInEx.dll')">
+    <BepInExCoreDir>$(MSBuildThisFileDirectory)../vendor/BepInEx/core</BepInExCoreDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(BepInExCoreDir)' == ''">
+    <BepInExCoreDir>$(GameDir)/BepInEx/core</BepInExCoreDir>
+  </PropertyGroup>
+
+  <!-- Fail early with a clear message instead of a page of missing-type errors. -->
+  <Target Name="CheckReferencePaths" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(GameManagedDir)/Core.dll')"
+           Text="Can't find the game's Core.dll in '$(GameManagedDir)'. Pass -p:GameDir=&quot;(the game folder)&quot;." />
+    <Error Condition="!Exists('$(BepInExCoreDir)/BepInEx.dll')"
+           Text="Can't find BepInEx.dll in '$(BepInExCoreDir)'. Run the install script first; it downloads BepInEx and fills bridge/vendor/BepInEx/core." />
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx"><HintPath>$(BepInExCoreDir)/BepInEx.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Core"><HintPath>$(GameManagedDir)/Core.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Utils"><HintPath>$(GameManagedDir)/Utils.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(GameManagedDir)/UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(GameManagedDir)/UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.ImageConversionModule"><HintPath>$(GameManagedDir)/UnityEngine.ImageConversionModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.ScreenCaptureModule"><HintPath>$(GameManagedDir)/UnityEngine.ScreenCaptureModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(GameManagedDir)/UnityEngine.InputLegacyModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(GameManagedDir)/UnityEngine.IMGUIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(GameManagedDir)/UnityEngine.TextRenderingModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UIModule"><HintPath>$(GameManagedDir)/UnityEngine.UIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UI"><HintPath>$(GameManagedDir)/UnityEngine.UI.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+</Project>

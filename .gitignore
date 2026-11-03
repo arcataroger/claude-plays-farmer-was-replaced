@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.DS_Store
+*.png
+bridge/vendor/
+bridge/plugin/bin/
+bridge/plugin/obj/
+bridge/dist/
+references/tech_tree.json
