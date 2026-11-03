@@ -79,9 +79,10 @@ Still ask before `new-run`, `load-save`, deleting files, or touching the user's 
 ## 5. Learn each system before you optimize it
 1. **Read first.** Read the system's doc page (`tfwr.py doc`) and the tooltip of every builtin it uses (`tfwr.py fn`). The docs win over anything you assume.
 2. **Probe what the docs leave open.** Write a 10-line experiment that logs the sensors around one action. Print before and after. Take a screenshot when the log can't explain a change.
-3. **Fit hidden rules with a sweep, not one point.** Vary one parameter across 3–4 values and log every step. Fit the rule to all of them. Then test the fit once more. A model built from one observation fails on the next try.
-4. **Name the general problem.** Before a big script, describe the task in general terms. Name the grid, what the drone senses, what each action costs and what pays. Then research that problem class (section 6.6).
-5. **Ask what the rule's inputs are, and which you control.** Many limits depend on something you can change. Examples: the farm size, the drone count, the order of steps, a cheaper input.
+3. **Re-probe after you buy the related unlock.** The world can change with what you own, so an absence you observed before an unlock proves nothing afterwards.
+4. **Fit hidden rules with a sweep, not one point.** Vary one parameter across 3–4 values and log every step. Fit the rule to all of them. Then test the fit once more. A model built from one observation fails on the next try.
+5. **Name the general problem.** Before a big script, describe the task in general terms. Name the grid, what the drone senses, what each action costs and what pays. Then research that problem class (section 6.6).
+6. **Ask what the rule's inputs are, and which you control.** Many limits depend on something you can change. Examples: the farm size, the drone count, the order of steps, a cheaper input.
 
 ## 6. Optimize first, and measure instead of guessing
 The game is about inventing efficient solutions. Waiting and brute force come last.
@@ -124,7 +125,7 @@ No loop is trusted until its logs prove it works, and a running loop keeps provi
 `bridge/` holds a BepInEx plugin plus a stdlib Python client. It drives the game over `127.0.0.1:7777` without moving the mouse. Read `bridge/README.md` for every command. The rules that matter most:
 1. **Run everything through `main`.** The plugin refuses `run` in other windows. Stage files that `main` needs (imports, `simulate()` and `leaderboard_run()` targets) with `set FILE --window claude_NAME`; the plugin minimizes them and closes them after the run.
 2. **One run:** `tfwr_bridge.py run FILE.py --timeout SECS --wait-for "why"`. Exit 0 finished, 4 watchdog stop, 5 timed out, 6 warning, 7 error.
-3. **Long farming:** `tfwr_bridge.py farm FILE --goal item=N`. It starts the script once and checks in every chunk; it stops on the goal, an error, a warning or a stall.
+3. **Long farming:** `tfwr_bridge.py farm FILE --goal item=N`. It starts the script once and checks in every chunk; it stops on the goal, an error, a warning or a stall. It checks the goal once per poll, so at high speed it can overshoot a small goal by a lot. Pass a low `--ff` when a small goal comes before a scarce item.
 4. **Watchdog:** the plugin stops any bridge run after its time limit, or when its goal items stop rising. Set goals with `--goal` or `watchdog --items a,b`; give `simulate()` benches `--stall 0`. Never disable it for an unattended run.
 5. **Status line and captions:** give every run a reason (`--wait-for`), and narrate decisions with `say "..."`, so a viewer can follow along.
 6. **Leaderboards:** `python3 scripts/lb.py BOARD PROGRAM.py [SPEEDUP] [MAX_SECONDS]` (`lb.sh` wraps it). Read each board's start items and goal in `tfwr.py doc unlocks/leaderboard`. Prints inside a board never reach the log, so debug the program in `simulate()` first.
