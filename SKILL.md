@@ -130,7 +130,7 @@ No loop is trusted until its logs prove it works, and a running loop keeps provi
 5. **Status line and captions:** give every run a reason (`--wait-for`), and narrate decisions with `say "..."`, so a viewer can follow along.
 6. **Leaderboards:** `python3 scripts/lb.py BOARD PROGRAM.py [SPEEDUP] [MAX_SECONDS]` (`lb.sh` wraps it). Read each board's start items and goal in `tfwr.py doc unlocks/leaderboard`. Prints inside a board never reach the log, so debug the program in `simulate()` first.
 7. **Speed:** the client ramps fast-forward during runs; the plugin returns to 1x when nothing runs. The player's own speed buttons override it.
-8. **Camera:** the plugin keeps code windows off the farm by itself (`tidy_guard`).
+8. **Camera:** the plugin keeps code windows off the farm by itself (`tidy_guard`). On a big screen, raise code text with `tfwr_bridge.py text-scale N` (1 to 4); it scales code against the farm, and it persists. Never hand-edit the game's `options.txt`: a bad value broke a save's load in testing.
 
 ## 9. Records for every run
 A run must leave enough to replay, audit and score it.

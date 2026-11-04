@@ -32,7 +32,7 @@ namespace TfwrBridge
     public class BridgePlugin : BaseUnityPlugin
     {
         public const string Guid = "dev.tfwr.bridge";
-        public const string Version = "0.2.1";
+        public const string Version = "0.2.2";
 
         private class Job
         {
@@ -52,6 +52,7 @@ namespace TfwrBridge
 
         private readonly ConcurrentQueue<Job> jobs = new ConcurrentQueue<Job>();
         private ConfigEntry<int> port;
+        private ConfigEntry<float> textScale;
         private TcpListener listener;
         private volatile bool serving;
         private Workspace workspace;
@@ -98,6 +99,7 @@ namespace TfwrBridge
         private void Awake()
         {
             port = Config.Bind("Server", "Port", 7777, "Loopback TCP port for the bridge.");
+            textScale = Config.Bind("View", "TextScale", 1f, "Code text size relative to the farm (1 to 4).");
             dataDir = Application.persistentDataPath;
             Job.Finished = AuditCommand;
             // Record the game build: Steam can update the game mid-project (2026-11-03),
@@ -500,6 +502,7 @@ namespace TfwrBridge
             }
             StepCentering();
             StepFollow();
+            ApplyTextScale();
             StepTidy();
         }
 
@@ -919,6 +922,13 @@ namespace TfwrBridge
                 case "speed":
                     Need(a, 2);
                     job.Finish(Speed(a[1]));
+                    return;
+                case "text_scale":
+                    if (a.Length > 1) textScale.Value = Mathf.Clamp(ParseF(a[1]), 1f, 4f);
+                    ApplyTextScale();
+                    nextTidy = 0f;
+                    lastShrinkAt = lastGrowAt = -999f;
+                    job.Finish(Ok(Kv("text_scale", textScale.Value), Kv("zoom", Ws.cameraController.zoom)));
                     return;
                 case "tidy_guard":
                     Need(a, 2);
@@ -1637,7 +1647,23 @@ namespace TfwrBridge
         // Zoom must be able to grow: shrink-only zoom ratcheted down to unreadable on a 4K
         // TV (2026-11-03). Grow at most every 10 s, and never within 30 s of a shrink.
         private float lastShrinkAt = -999f, lastGrowAt = -999f;
-        private const float GrowWhenFitAbove = 1.3f, MaxTidyZoom = 0.6f;
+        private const float GrowWhenFitAbove = 1.3f;
+        private float MaxTidyZoom => 0.6f * Mathf.Clamp(textScale.Value, 1f, 4f);
+
+        // Code and farm share one zoom, so big text alone can't fit a big farm. islandScale
+        // scales the farm only: dividing it by N lets the guard raise zoom by N, which
+        // leaves the farm the same size and makes code N times bigger. Cosmetic: the
+        // camera reads this every frame, and no drone sensor sees it (2026-11-04, 4K TV).
+        private float baseIslandScale = -1f;
+
+        private void ApplyTextScale()
+        {
+            var c = DesignConstants.Inst?.cameraController;
+            if (c == null) return;
+            if (baseIslandScale < 0f) baseIslandScale = c.islandScale;
+            c.islandScale = baseIslandScale / Mathf.Clamp(textScale.Value, 1f, 4f);
+        }
+
 
         // The zoom factor k that fits the farm beside the code column. Zoom scales the
         // column too, so the farm's width at k must fit what the column at k leaves free:

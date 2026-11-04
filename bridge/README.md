@@ -191,6 +191,8 @@ out, secs, state = b.run_and_wait("main", 'quick_print(get_world_size())')
 `state` is `finished`, `error`, `warning`, `goal`, `timeout` or `watchdog`. Treat `watchdog` as a failure, like `error`.
 
 ### Windows on screen
+`text-scale N` (1 to 4) makes code text N times larger against the farm. It lowers the farm's own scale and lets the tidy guard raise the zoom. It persists in the plugin's config.
+
 Only code windows stay on screen. Doc pages that `unlock()` opens close during bridge runs and on `arrange`. `status` reports them as `doc_windows`. The tidy guard also keeps zoom in step with the screen: it fits the farm and the code column together, so long code lines lower the zoom. Keep lines short; the linter warns over 100 characters.
 
 ### Watchdog

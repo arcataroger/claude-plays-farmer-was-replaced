@@ -578,6 +578,8 @@ def main(argv=None):
     wt.add_argument("--goal", help="ITEM=TARGET: show progress on that item instead of the clock")
     wa = sub.add_parser("watcher", help="turn the game's file watcher on or off (the bridge turns it off)")
     wa.add_argument("state", choices=["on", "off"])
+    ts = sub.add_parser("text-scale", help="code text size relative to the farm, 1 to 4; it persists (no value reads it)")
+    ts.add_argument("value", nargs="?", type=float)
     sp = sub.add_parser("speed", help="the player's speed buttons: play (1x), ff (cycle 2x..128x), auto, status")
     sp.add_argument("mode", choices=["play", "ff", "auto", "status"])
     wd = sub.add_parser("watchdog", help="read or set the plugin's run limits for the next run (seconds, 0 = off)")
@@ -695,6 +697,9 @@ def main(argv=None):
             return 0
         if args.cmd == "follow":
             print(json.dumps(bridge.follow(not args.off)))
+            return 0
+        if args.cmd == "text-scale":
+            print(json.dumps(bridge.call("text_scale", *([args.value] if args.value is not None else []))))
             return 0
         if args.cmd == "speed":
             print(json.dumps(bridge.call("speed", args.mode)))
