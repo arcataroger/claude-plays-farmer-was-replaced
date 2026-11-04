@@ -32,7 +32,7 @@ namespace TfwrBridge
     public class BridgePlugin : BaseUnityPlugin
     {
         public const string Guid = "dev.tfwr.bridge";
-        public const string Version = "0.2.2";
+        public const string Version = "0.2.3";
 
         private class Job
         {
@@ -99,7 +99,7 @@ namespace TfwrBridge
         private void Awake()
         {
             port = Config.Bind("Server", "Port", 7777, "Loopback TCP port for the bridge.");
-            textScale = Config.Bind("View", "TextScale", 1f, "Code text size relative to the farm (1 to 4).");
+            textScale = Config.Bind("View", "TextScale", 0f, "Code text size relative to the farm: 1 to 8, or 0 for auto (screen height / 540).");
             dataDir = Application.persistentDataPath;
             Job.Finished = AuditCommand;
             // Record the game build: Steam can update the game mid-project (2026-11-03),
@@ -924,11 +924,11 @@ namespace TfwrBridge
                     job.Finish(Speed(a[1]));
                     return;
                 case "text_scale":
-                    if (a.Length > 1) textScale.Value = Mathf.Clamp(ParseF(a[1]), 1f, 4f);
+                    if (a.Length > 1) textScale.Value = a[1] == "auto" ? 0f : Mathf.Clamp(ParseF(a[1]), 1f, 8f);
                     ApplyTextScale();
                     nextTidy = 0f;
                     lastShrinkAt = lastGrowAt = -999f;
-                    job.Finish(Ok(Kv("text_scale", textScale.Value), Kv("zoom", Ws.cameraController.zoom)));
+                    job.Finish(Ok(Kv("text_scale", TextN), Kv("auto", textScale.Value <= 0f), Kv("zoom", Ws.cameraController.zoom)));
                     return;
                 case "tidy_guard":
                     Need(a, 2);
@@ -1648,7 +1648,12 @@ namespace TfwrBridge
         // TV (2026-11-03). Grow at most every 10 s, and never within 30 s of a shrink.
         private float lastShrinkAt = -999f, lastGrowAt = -999f;
         private const float GrowWhenFitAbove = 1.3f;
-        private float MaxTidyZoom => 0.6f * Mathf.Clamp(textScale.Value, 1f, 4f);
+        private float MaxTidyZoom => 0.6f * TextN;
+
+        // 0 means auto: one step per 540 screen lines, so 4 at 2160 (a 4K TV's good value,
+        // 2026-11-04) and 2 at 1080. Read live, so a resized window re-fits by itself.
+        private float TextN => textScale.Value > 0f ? Mathf.Clamp(textScale.Value, 1f, 8f)
+                                                    : Mathf.Clamp(Screen.height / 540f, 1f, 8f);
 
         // Code and farm share one zoom, so big text alone can't fit a big farm. islandScale
         // scales the farm only: dividing it by N lets the guard raise zoom by N, which
@@ -1661,7 +1666,7 @@ namespace TfwrBridge
             var c = DesignConstants.Inst?.cameraController;
             if (c == null) return;
             if (baseIslandScale < 0f) baseIslandScale = c.islandScale;
-            c.islandScale = baseIslandScale / Mathf.Clamp(textScale.Value, 1f, 4f);
+            c.islandScale = baseIslandScale / TextN;
         }
 
 
