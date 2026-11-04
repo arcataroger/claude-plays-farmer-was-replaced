@@ -278,6 +278,28 @@ def cmd_info(argv):
             print("  next level grants:", ", ".join(gr))
 
 
+KEYWORDS = {"if", "elif", "else", "while", "for", "break", "continue", "pass", "def", "return", "global", "import",
+            "from", "and", "or", "not", "in", "list", "dict", "set", "tuples", "true", "false", "none"}
+
+
+def known_names():
+    """Lowercase names that exist in this game version: the game's stub, enums, keywords.
+
+    Tech-tree grants carry leftovers (trade, carrot_seed) that the game no longer has.
+    """
+    names = set(KEYWORDS)
+    stub = tfwr.freshest_stub(tfwr.languages_dir(), tfwr.saves_dir())
+    if stub:
+        with open(stub, encoding="utf-8", errors="replace") as f:
+            names |= {m.lower() for m in re.findall(r"^def (\w+)", f.read(), re.M)}
+    enums = json.load(open(ENUMS))
+    for fam, vals in enums.items():
+        if not fam.startswith("_"):
+            names.add(fam.lower())
+            names |= {str(v).lower() for v in vals}
+    return names if stub else set()
+
+
 def cmd_can(argv):
     """What this save can use right now, and what each visible node would add.
 
@@ -303,6 +325,8 @@ def cmd_can(argv):
                 have.add(g["name"])
     # Starting commands sit in the save as plain ids, outside the tech tree.
     have |= {r for r in raw if r not in ids and not re.search(r"_\d+$", r) and r not in ("grassland", "hay", "soil", "straw_hat")}
+    known = known_names()
+    have = {n for n in have if n.lower() in known} if known else have
     print("You can use now:")
     print("  " + (", ".join(sorted(have)) or "(nothing listed yet)"))
     print("Variables:", "yes" if "variables" in {i.lower() for i in lv} else "NO: assigning a variable fails until you own Variables")
@@ -315,7 +339,8 @@ def cmd_can(argv):
         if not visible(t, lv, name):
             hidden += 1
             continue
-        adds = sorted(g["name"] for g in (e.get("grants") or []) if g.get("level", 1) == L + 1 and g["name"] not in have)
+        adds = sorted(g["name"] for g in (e.get("grants") or []) if g.get("level", 1) == L + 1 and g["name"] not in have
+                      and (not known or g["name"].lower() in known))
         print("  %-22s %s" % (name, ", ".join(adds) or "(no new names; read `unlocks.py info`)"))
     print("\n%d more node(s) stay hidden until their prerequisites are met." % hidden)
 

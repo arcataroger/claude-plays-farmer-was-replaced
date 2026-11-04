@@ -228,11 +228,20 @@ def cmd_status(argv):
     files = sorted(f for f in os.listdir(p) if f.endswith(".py") and f != "__builtins__.py")
     print("\ncode files:", ", ".join(files) or "(none)")
     out = os.path.join(os.path.dirname(saves), "output.txt")
-    if os.path.exists(out):
+    if os.path.exists(out) and not output_is_current(out, p):
+        print("\noutput.txt predates this save, so we skip it (all slots share the file).")
+    elif os.path.exists(out):
         print("\noutput.txt (%s), last 15 lines:" % _mtime(out))
         with open(out, errors="replace") as f:
             for line in f.readlines()[-15:]:
                 print("  " + line.rstrip())
+
+
+def output_is_current(out, slot_dir):
+    """False when output.txt is older than this save slot: it holds another run's lines."""
+    st = os.stat(slot_dir)
+    born = getattr(st, "st_birthtime", st.st_ctime)  # st_ctime is creation time on Windows
+    return os.path.getmtime(out) >= born
 
 
 def _mtime(p):
