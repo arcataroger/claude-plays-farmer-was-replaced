@@ -326,6 +326,8 @@ def cmd_can(argv):
                 have.add(g["name"])
     # Starting commands sit in the save as plain ids, outside the tech tree.
     have |= {r for r in raw if r not in ids and not re.search(r"_\d+$", r) and r not in ("grassland", "hay", "soil", "straw_hat")}
+    # A node can be its own command (Plant grants plant) without listing itself.
+    have |= {r["id"] for name, r in t.items() if int(lv.get(name, 0)) > 0}
     known = known_names()
     have = {n for n in have if n.lower() in known} if known else have
     print("You can use now:")
