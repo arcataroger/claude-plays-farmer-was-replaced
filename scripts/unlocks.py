@@ -279,7 +279,8 @@ def cmd_info(argv):
 
 
 KEYWORDS = {"if", "elif", "else", "while", "for", "break", "continue", "pass", "def", "return", "global", "import",
-            "from", "and", "or", "not", "in", "list", "dict", "set", "tuples", "true", "false", "none"}
+            "from", "and", "or", "not", "in", "list", "dict", "set", "tuples", "true", "false", "none",
+            "north", "east", "south", "west"}
 
 
 def known_names():
