@@ -24,6 +24,8 @@ Registry schema (paths resolve against the registry's folder):
 
   farms          name (one word), file, seconds (real seconds per slice), surface,
                  produces and consumes (item names as in Items.X, without "Items.").
+                 Add "to_completion": true for a farm that pays only at a clean end:
+                 it then runs until it finishes, not for its "seconds".
   surface_code   code you write that brings the drone to the state your surface farms
                  expect. We prepend it to every farm with "surface": true.
   reserves       the driver never spends an item below its reserve, and farms it back
@@ -81,21 +83,37 @@ DEFAULT_TREE = os.path.join(HERE, "..", "references", "tech_tree.json")
 ENUMS = os.path.join(HERE, "..", "references", "enums.json")
 
 # Probes print one line each, because the game's output buffer keeps only recent lines.
+# Probes print short chunks plus a count: one long line lost its tail in the game's
+# output, so late unlocks vanished from the costs (2026-11-04: Trees, Watering and
+# others stayed unbought for many slices). parse_rows fails if entries are missing.
 STOCK = """s = ""
+n = 0
 for it in Items:
 	s = s + str(it) + "=" + str(num_items(it)) + " "
+	n += 1
+	if n % 6 == 0:
+		quick_print("STOCK", s)
+		s = ""
 quick_print("STOCK", s)
+quick_print("STOCK_COUNT", n)
 """
 
 # Fair play: we read levels for every unlock, but costs only for nodes the player can see.
 LEVELS = """s = ""
+n = 0
 for u in Unlocks:
 	s = s + str(u) + "@" + str(num_unlocked(u)) + ";"
+	n += 1
+	if n % 6 == 0:
+		quick_print("LEVELS", s)
+		s = ""
 quick_print("LEVELS", s)
+quick_print("LEVELS_COUNT", n)
 """
 
 COSTS = """WANT = %s
 s = ""
+n = 0
 for u in WANT:
 	s = s + str(u) + "@" + str(num_unlocked(u))
 	c = get_cost(u)
@@ -103,7 +121,12 @@ for u in WANT:
 		for it in c:
 			s = s + "," + str(it) + "=" + str(c[it])
 	s = s + ";"
+	n += 1
+	if n %% 4 == 0:
+		quick_print("NEED", s)
+		s = ""
 quick_print("NEED", s)
+quick_print("NEED_COUNT", n)
 """
 
 BUYER = """RESERVE = %s
@@ -126,6 +149,10 @@ while changed:
 			changed = True
 quick_print("BUYER done")
 """
+
+
+COMPLETION_LIMIT = 1800  # real seconds a to_completion farm can run
+HOPELESS_MINUTES = 240  # an estimate past this means a real farm is missing
 
 
 class Problem(Exception):
@@ -178,6 +205,7 @@ def load_registry(path):
         if not NAME_RE.match(fm["name"]) or fm["name"] in seen:
             raise SystemExit("registry: farm names must be unique identifiers: %r" % fm["name"])
         seen.add(fm["name"])
+        fm["to_completion"] = bool(fm.get("to_completion", False))
         fm["produces"] = [bare(x, "Items.") for x in fm.get("produces", [])]
         fm["consumes"] = [bare(x, "Items.") for x in fm.get("consumes", [])]
         fm["seconds"] = float(fm["seconds"])
@@ -275,20 +303,34 @@ def visible(tree, levels, name):
 
 # ---------- parsing ----------
 
+def tagged(out, tag):
+    """All of a probe's chunks joined, or None if no chunk or no count line arrived."""
+    rows = re.findall(r"\b%s (.*)$" % tag, out, re.M)
+    return " ".join(rows) if rows else None
+
+
+def check_count(out, tag, got):
+    m = re.search(r"%s_COUNT (%s)" % (tag, NUM), out)
+    if m and int(float(m.group(1))) != got:
+        raise Problem("%s probe: expected %d entries, read %d; output lost lines" % (tag, int(float(m.group(1))), got))
+
+
 def parse_stock(out):
-    m = re.search(r"STOCK (.*)", out)
-    if not m:
+    text = tagged(out, "STOCK")
+    if text is None:
         return None
-    return {bare(k, "Items."): float(v) for k, v in re.findall(r"(\S+?)=(%s)" % NUM, m.group(1))}
+    res = {bare(k, "Items."): float(v) for k, v in re.findall(r"(\S+?)=(%s)" % NUM, text)}
+    check_count(out, "STOCK", len(res))
+    return res
 
 
 def parse_need(out, tag="NEED"):
     """Returns {unlock: (level, {item: n})}, or None if the tag's line is missing."""
-    m = re.search(tag + r" (.*)", out)
-    if not m:
+    text = tagged(out, tag)
+    if text is None:
         return None
     res = {}
-    for entry in m.group(1).split(";"):
+    for entry in text.split(";"):
         entry = entry.strip()
         if not entry or "@" not in entry:
             continue
@@ -296,6 +338,7 @@ def parse_need(out, tag="NEED"):
         u, _, lv = head.partition("@")
         cost = {bare(k, "Items."): float(v) for k, v in re.findall(r"([^,=]+)=(%s)" % NUM, rest)}
         res[bare(u, "Unlocks.")] = (float(lv or 0), cost)
+    check_count(out, tag, len(res))
     return res
 
 
@@ -334,6 +377,7 @@ class Driver:
         self.last_run = {}  # farm -> slice index
         self.k = 0
         self.unknown = set()  # unowned unlocks missing from tech_tree.json
+        self.hopeless = set()  # items already warned about
         os.makedirs(os.path.join(workdir, "slices"), exist_ok=True)
 
     # files
@@ -438,8 +482,9 @@ class Driver:
                 req[it] = req.get(it, 0) + n
         return req
 
-    def pick(self, short):
+    def pick(self, short, stock=None):
         """Returns (farm, why, stuck items)."""
+        stock = stock or {}
         farms = self.reg["farms"]
         for fm in farms:
             if fm["name"] not in self.rates:
@@ -451,22 +496,38 @@ class Driver:
                     return fm, "remeasure (last run %d slices ago)" % (self.k - self.last_run[fm["name"]]), []
         best, worst, why, stuck = None, -1.0, "", []
         for it, gap in sorted(short.items()):
-            cands = [(self.rates[fm["name"]].get(it, 0), fm) for fm in farms]
+            # A farm that declares the item beats a by-product trickle from another farm.
+            cands = [(self.rates[fm["name"]].get(it, 0), fm) for fm in farms if it in fm["produces"]]
             cands = [c for c in cands if c[0] > 0]
+            if not cands:
+                cands = [c for c in ((self.rates[fm["name"]].get(it, 0), fm) for fm in farms) if c[0] > 0]
             if not cands:
                 stuck.append(it)
                 continue
             rate, fm = max(cands, key=lambda c: c[0])
             eta = gap / rate
+            if eta / 60 > HOPELESS_MINUTES and it not in self.hopeless:
+                self.hopeless.add(it)
+                self.log("CHECK %s would take ~%.0f min at its best rate: build a real farm for it, "
+                         "don't wait." % (it, eta / 60))
             if eta > worst:
                 best, worst = fm, eta
                 why = "%s short %.4g, ~%.0f min at its best rate" % (it, gap, eta / 60)
+        # A farm whose input ran out earns nothing, so feed it first.
+        if best:
+            for it in best["consumes"]:
+                if stock.get(it, 1) <= 0:
+                    makers = [fm for fm in farms if it in fm["produces"]]
+                    if makers:
+                        return makers[0], "%s needs %s, which ran out" % (best["name"], it), stuck
         return best, why, stuck
 
     def slice(self, fm, before):
         name = fm["name"]
         self.say("Economy: %s for %.0f s" % (name, fm["seconds"]))
-        out, took, state = self.run(name, fm["code"], fm["seconds"], "economy slice " + name)
+        # A to_completion farm pays only at a clean end, so "seconds" is not a cut-off.
+        secs = max(fm["seconds"], COMPLETION_LIMIT) if fm["to_completion"] else fm["seconds"]
+        out, took, state = self.run(name, fm["code"], secs, "economy slice " + name)
         rel = self.archive(name, out)
         after = self.stock()
         delta = {it: after.get(it, 0) - before.get(it, 0) for it in set(after) | set(before)}
@@ -527,7 +588,7 @@ class Driver:
                     return 4, summary
                 self.log("nothing short; we maxed every visible unlock. Slices run: %d" % self.k)
                 return 0, summary
-            fm, why, stuck = self.pick(short)
+            fm, why, stuck = self.pick(short, st)
             if stuck:
                 makers = {it: [f["name"] for f in self.reg["farms"] if it in f["produces"]] for it in stuck}
                 self.log("CHECK short, but no farm made it in its last slice: %s" % makers)

@@ -330,7 +330,8 @@ class Bridge:
             time.sleep(poll)
             elapsed = time.time() - ramp_start - ff_after
             if ff > 1 and elapsed >= 0:
-                want = min(ff, 2.0 ** (1 + int(elapsed / ff_step))) if ff_step > 0 else ff
+                # Cap the exponent: a long run overflowed the float (2026-11-04).
+                want = min(ff, 2.0 ** min(1 + int(elapsed / ff_step), 30)) if ff_step > 0 else ff
                 if want != factor:
                     self.fast_forward(want, until_idle=True)
                     factor = want

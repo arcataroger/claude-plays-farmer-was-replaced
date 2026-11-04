@@ -110,9 +110,11 @@ def tree_check(driver, bridge, tree_path, since):
         got = visible_costs(run, tree)
     except Exception:
         return None
-    if got is None or got[1]:
-        # Early saves lack quick_print or get_cost, and unknown nodes block a verdict.
-        return None
+    if got is None:
+        return None  # early saves lack quick_print or get_cost
+    if got[1] and not got[0]:
+        return False, len(got[1]), ("every known node is maxed, but tech_tree.json lacks %s: re-run "
+                                    "extract_tech_tree.py" % ", ".join(got[1]))
     left = sorted(got[0])
     return not left, len(left), ("%d visible unlock(s) with a next cost" % len(left))
 
@@ -137,6 +139,21 @@ def leaderboards_check(path):
 
 
 # ---------- the decision ----------
+
+def stock_rose(st, bridge):
+    """True when any real item rose since the last call: hand-run farms are progress too."""
+    if bridge is None:
+        return False
+    try:
+        r = bridge.call("inventory")
+    except Exception:
+        return False
+    items = {k: v for k, v in r.get("items", r).items()
+             if isinstance(v, (int, float)) and k not in ("ok", "water", "fertilizer")}
+    prev = st.get("stock") or {}
+    st["stock"] = items
+    return any(v > prev.get(k, v) for k, v in items.items())
+
 
 def decide(st, status, args, base, bridge):
     now = time.time()
@@ -213,6 +230,8 @@ def decide(st, status, args, base, bridge):
         return ("campaign complete. Set phase back in %s only when an update reveals new nodes, "
                 "achievements or boards." % args.state)
     if not st.get("last_progress"):
+        st["last_progress"] = now
+    if stock_rose(st, bridge):
         st["last_progress"] = now
     left = "" if st.get("remaining") is None else " (%s left)" % st["remaining"]
     stale = now - st["last_progress"]
