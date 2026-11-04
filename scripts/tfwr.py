@@ -157,7 +157,9 @@ def pick_slot(saves, argv):
     def written(d):
         j = os.path.join(saves, d, "save.json")
         return os.path.getmtime(j) if os.path.exists(j) else os.path.getmtime(os.path.join(saves, d))
-    return max(s, key=written)
+    # A folder with no save.json holds nothing to read, so prefer slots that have one.
+    real = [d for d in s if os.path.exists(os.path.join(saves, d, "save.json"))]
+    return max(real or s, key=written)
 
 
 def _bridge_active_save():

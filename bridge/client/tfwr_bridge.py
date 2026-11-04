@@ -708,6 +708,7 @@ def main(argv=None):
         if args.cmd in ("new-run", "load-save"):
             bridge, slot = bridge.switch_save(args.name, create=args.cmd == "new-run")
             print(f"active save: {slot}")
+            print("next: run scripts/unlocks.py can. Each save has its own unlocks and language features.")
             if args.cmd == "new-run":
                 backup, arranged = bridge.takeover()
                 print(f"backup: {backup}")

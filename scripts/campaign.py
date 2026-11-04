@@ -253,6 +253,8 @@ def main(argv=None):
     a = p.parse_args(argv)
     if not a.state:
         a.state = default_state_path()
+    if not os.path.exists(a.state):
+        print("new save for this campaign: run `scripts/unlocks.py can` first, so you know what this save can use.")
 
     st = dict(DEFAULT_STATE)
     st.update(load_json(a.state, {}) or {})

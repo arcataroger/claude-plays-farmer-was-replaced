@@ -33,14 +33,15 @@ The line runs between **game metadata** and **world state**. Metadata is what a 
 Run these from the skill directory. Each prints help with `-h`. On Windows, type `python` where this skill writes `python3`.
 1. `python3 scripts/tfwr.py status|doc [page]|fn NAME|errors [text]|output`: save summary, doc pages, builtin tooltips, error strings, the output log.
 2. `python3 scripts/unlocks.py next|info|levels|plan|probe|parse`: buyable nodes with costs and shortfall, node details, budget plans. `next` judges each node alone, so one purchase can make the next line unaffordable. They read `references/tech_tree.json`, which you generate locally (section 3) and which shows only visible nodes.
-3. `python3 scripts/achievements.py [--json]`: your Steam achievements, unlocked and locked, with hidden ones hidden.
-4. `python3 scripts/lint_tfwr.py FILE.py --save-dir SLOT_DIR`: Python habits the game rejects, names and features this save hasn't unlocked, loops without log lines, literal coordinates. Fix every ERROR; justify or fix every WARNING.
-5. `python3 scripts/precheck.py FILE.py --seeds 3,8`: lint, then run the script in `simulate()` on fixed seeds, and fail on errors, warnings or zero-work phases. Pass it before any script joins a loop.
-6. `python3 scripts/economy_driver.py --registry economy.json`: runs your farms in time slices, always the one whose short item finishes last, and buys greedily with reserves. You write the registry; the driver holds no game knowledge.
-7. `python3 scripts/campaign.py`: the outside-the-turn wake-up for the campaign loop (section 4). It prints the one next step.
-8. `scripts/tfwr_log.md`: the log-line convention every drone script follows.
-9. `python3 bridge/client/tfwr_bridge.py ...`: drives the game (section 8).
-10. `python3 scripts/journal.py init|step|fail|log`: records the run as a git repo, one commit per milestone (section 9).
+3. `python3 scripts/unlocks.py can`: what this save can use right now (language features and builtins), and what each visible node would add. Run it before you write your first script, and again after every `new-run` or `load-save`: a fresh save lacks even variables.
+4. `python3 scripts/achievements.py [--json]`: your Steam achievements, unlocked and locked, with hidden ones hidden.
+5. `python3 scripts/lint_tfwr.py FILE.py --save-dir SLOT_DIR`: Python habits the game rejects, names and features this save hasn't unlocked, loops without log lines, literal coordinates. Fix every ERROR; justify or fix every WARNING.
+6. `python3 scripts/precheck.py FILE.py --seeds 3,8`: lint, then run the script in `simulate()` on fixed seeds, and fail on errors, warnings or zero-work phases. Pass it before any script joins a loop.
+7. `python3 scripts/economy_driver.py --registry economy.json`: runs your farms in time slices, always the one whose short item finishes last, and buys greedily with reserves. You write the registry; the driver holds no game knowledge.
+8. `python3 scripts/campaign.py`: the outside-the-turn wake-up for the campaign loop (section 4). It prints the one next step.
+9. `scripts/tfwr_log.md`: the log-line convention every drone script follows.
+10. `python3 bridge/client/tfwr_bridge.py ...`: drives the game (section 8).
+11. `python3 scripts/journal.py init|step|fail|log`: records the run as a git repo, one commit per milestone (section 9).
 
 References:
 1. `references/dialect.md`: the language and its timing model. Read it before your first script.
@@ -56,6 +57,7 @@ References:
    4. If a tool can't find the game or your saves, set `TFWR_LANGUAGES` or `TFWR_SAVES`. With the bridge running, the tools ask the game for its save folder first.
 3. Run `python3 bridge/client/tfwr_bridge.py ping`. Exit code 2 means no bridge: check that the game runs with BepInEx (bridge README).
 4. For a fresh campaign, run `tfwr_bridge.py new-run`, then `scripts/journal.py init`.
+5. At the start of every session, and after any `new-run` or `load-save`, run `scripts/unlocks.py can`. Write only what it lists.
 
 ## 4. The campaign loop
 Play as one self-pacing loop with three phases. Apply sections 5–7 inside every phase.

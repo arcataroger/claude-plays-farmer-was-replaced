@@ -32,7 +32,7 @@ namespace TfwrBridge
     public class BridgePlugin : BaseUnityPlugin
     {
         public const string Guid = "dev.tfwr.bridge";
-        public const string Version = "0.2.3";
+        public const string Version = "0.2.4";
 
         private class Job
         {
@@ -338,6 +338,11 @@ namespace TfwrBridge
                 else parts.Add(waitTimeout > 0f ? Clock(t) + " of " + Clock(waitTimeout) : Clock(t));
             }
             if (runPending && wdLimit > 0) parts.Add("stops at " + Clock(wdLimit));
+            // Between runs the agent is thinking or writing code. Viewers saw an unexplained
+            // pause there (2026-11-04), so say so even when the agent forgot a caption.
+            if (!runPending && runsFinished > 0 && MainSim.Inst != null && !MainSim.Inst.IsExecuting()
+                && Time.unscaledTime - lastRunEnded > 3f)
+                parts.Add("Agent thinking   \u00b7   " + Clock(Time.unscaledTime - lastRunEnded) + " since the last run");
             double speed = MainSim.Inst != null ? MainSim.Inst.TimeFactor : 1.0;
             if (manualSpeed) parts.Add("speed " + speed.ToString("0") + "x (manual)");
             else if (speed > 1.01) parts.Add("speed " + speed.ToString("0") + "x");
@@ -481,6 +486,7 @@ namespace TfwrBridge
             if (runPending && Time.frameCount > runStartFrame && MainSim.Inst != null && !MainSim.Inst.IsExecuting())
             {
                 runsFinished = runsStarted;
+                lastRunEnded = Time.unscaledTime;
                 if (!string.IsNullOrEmpty(runName) && wdStopped == "") Say("Finished running " + runName, 6f);
                 Wait("");
                 runPending = false;
@@ -767,6 +773,7 @@ namespace TfwrBridge
         // Staging windows close once nothing runs, after a grace period so `set` then `run` works.
         private readonly Dictionary<string, float> staged = new Dictionary<string, float>();
         private float nextSweep;
+        private float lastRunEnded;
 
         private void SweepStaged()
         {

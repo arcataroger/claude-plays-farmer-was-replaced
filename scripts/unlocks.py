@@ -7,6 +7,7 @@
                          calls, so it runs at any progress level. Costs cover visible nodes only.
                          Run it with `tfwr_bridge.py run`, save its output, then `parse`.
   parse [FILE]           Parse probe output (default: output.txt) into the cache and print a table.
+  can                    What this save can use now, and what each visible node adds. Run it first.
   plan Unlocks.X [...]   Compare next-level costs with the inventory. Show the shortfall per item.
                          Uses the in-game probe cache, else references/tech_tree.json.
   info Unlocks.X [...]   Rebuild the tech-tree hover from files: description, level/max, effect
@@ -277,6 +278,48 @@ def cmd_info(argv):
             print("  next level grants:", ", ".join(gr))
 
 
+def cmd_can(argv):
+    """What this save can use right now, and what each visible node would add.
+
+    Run it at the start of a session and after any new-run or load-save: the language
+    arrives piece by piece, so a fresh save lacks even variables. Hidden nodes stay
+    hidden; we print only how many there are.
+    """
+    t = tree()
+    if not t:
+        sys.exit("references/tech_tree.json missing. Run scripts/extract_tech_tree.py (see SKILL.md).")
+    raw, _ = save_data(argv)
+    ids = {r["id"]: name for name, r in t.items()}
+    lv = {}
+    for r in raw:
+        m = None if r in ids else re.match(r"(.*?)_(\d+)$", r)
+        base, n = (m.group(1), int(m.group(2))) if m else (r, 1)
+        if base in ids:
+            lv[ids[base]] = n
+    have = set()
+    for name, e in t.items():
+        for g in e.get("grants") or []:
+            if int(lv.get(name, 0)) >= g.get("level", 1):
+                have.add(g["name"])
+    # Starting commands sit in the save as plain ids, outside the tech tree.
+    have |= {r for r in raw if r not in ids and not re.search(r"_\d+$", r) and r not in ("grassland", "hay", "soil", "straw_hat")}
+    print("You can use now:")
+    print("  " + (", ".join(sorted(have)) or "(nothing listed yet)"))
+    print("Variables:", "yes" if "variables" in {i.lower() for i in lv} else "NO: assigning a variable fails until you own Variables")
+    print("\nVisible nodes would add:")
+    hidden = 0
+    for name, e in sorted(t.items()):
+        L = int(lv.get(name, 0))
+        if not next_cost(e, L):
+            continue
+        if not visible(t, lv, name):
+            hidden += 1
+            continue
+        adds = sorted(g["name"] for g in (e.get("grants") or []) if g.get("level", 1) == L + 1 and g["name"] not in have)
+        print("  %-22s %s" % (name, ", ".join(adds) or "(no new names; read `unlocks.py info`)"))
+    print("\n%d more node(s) stay hidden until their prerequisites are met." % hidden)
+
+
 def cmd_next(argv):
     t, lv = tree(), current_levels(argv)
     inv = inventory(argv)
@@ -335,7 +378,7 @@ def main():
         print(__doc__)
         return
     {"levels": cmd_levels, "probe": cmd_probe, "parse": cmd_parse, "plan": cmd_plan,
-     "info": cmd_info, "next": cmd_next}.get(
+     "info": cmd_info, "next": cmd_next, "can": cmd_can}.get(
         sys.argv[1], lambda a: sys.exit("unknown command"))(sys.argv[2:])
 
 
