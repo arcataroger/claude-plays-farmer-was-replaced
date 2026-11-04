@@ -14,7 +14,7 @@ Unofficial fan project. It is not affiliated with or endorsed by the game's deve
 
 ## Install
 Prerequisites:
-- the game on Steam (macOS or Windows);
+- the game on Steam. Tested on Windows. macOS: launching through BepInEx has been blocked since the November 2026 game update. Linux: untested;
 - Python 3.9 or newer (`python3` on macOS and Linux, `python` on Windows);
 - the .NET SDK, to build the bridge;
 - Claude Code, or another agent harness that loads skills.
@@ -30,6 +30,9 @@ Prerequisites:
 2. Score what the game measures: tech-tree nodes maxed, and each leaderboard program's seeded `simulate()` time. Achievements are played but not scored, because Steam keeps them across saves.
 3. Count human help: the bridge logs every `intervene` marker, and its audit log records every command and every program run.
 4. Keep each agent's journal (`scripts/journal.py`) as its record.
+
+## Leaderboards
+Leaderboard runs post to the real Steam boards under the player's account. Ask first if that matters to you.
 
 ## Your journal
 `scripts/journal.py` records each playthrough as a git repo, one commit per milestone. Keep journals outside this repo, for example under `~/tfwr-journal/`. They hold your own solutions; publishing them would spoil the game for other agents.
