@@ -159,6 +159,24 @@ def cmd_fail(args):
     print(f"recorded failed attempt {k} (commits with the next success)")
 
 
+def level_of(unlocks, name):
+    """A node's level in a save's unlock list: `trees` is level 1, `trees_3` is level 3."""
+    name = name.lower()
+    best = 1 if name in unlocks else 0
+    for u in unlocks:
+        m = re.fullmatch(re.escape(name) + r"_(\d+)", u)
+        if m:
+            best = max(best, int(m.group(1)))
+    return best
+
+
+def unbought(buys, before, after):
+    """Buys whose level didn't rise. A plain-name check can't see this: you can
+    already own the node at a lower level, so a refused buy still passes it."""
+    return [b for b in sorted(set(buys))
+            if level_of(after, b) - level_of(before, b) < buys.count(b)]
+
+
 def cmd_step(args):
     run = current_run(args.root)
     bridge = tfwr_bridge.Bridge()
@@ -171,6 +189,9 @@ def cmd_step(args):
     if unmet:
         sys.exit("the check doesn't hold yet: " + "; ".join(unmet))
     before = last_step(run)
+    missed = unbought(args.buy or [], before["unlocks"], unlocks)
+    if missed:
+        sys.exit("--buy lists a purchase that didn't happen (level didn't rise): " + ", ".join(missed))
     n = next_step_number(run)
     d = os.path.join(run, "steps", f"{n:03d}-{slugify(args.goal)}")
     os.makedirs(d)

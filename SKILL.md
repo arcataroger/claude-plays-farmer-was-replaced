@@ -137,7 +137,7 @@ No loop is trusted until its logs prove it works, and a running loop keeps provi
 
 ## 9. Records for every run
 A run must leave enough to replay, audit and score it.
-1. Record milestones with `scripts/journal.py step --goal "..." --check '{...}' --script FILE --notes "..."`. Notes hold what a replayer needs: why the script looks as it does, and what you measured.
+1. Record milestones with `scripts/journal.py step --goal "..." --check '{...}' --script FILE --notes "..."`. Notes hold what a replayer needs: why the script looks as it does, and what you measured. `--buy` refuses a purchase whose level didn't rise; in `--check`, a plain name means "owned at any level", and `trees_2` means level 2.
 2. Keep every script, bench result and research report in the journal, not in this skill. This skill stays free of solutions.
 3. The bridge writes an audit log and archives every program it runs (bridge README, "Audit"). Mark any human help with `tfwr_bridge.py intervene "what the user did"`.
 4. End each phase with a numbers report: nodes maxed, achievements unlocked, board times before and after, wall-clock and game time.
