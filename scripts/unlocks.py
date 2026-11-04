@@ -366,6 +366,10 @@ def cmd_next(argv):
     for _, name, L, c, short in sorted(rows):
         print("%-22s L%d->%d  cost %-28s %s" % (name, L, L + 1, ", ".join("%s %g" % kv for kv in c.items()),
                                               "AFFORDABLE" if not short else "short " + ", ".join("%s %g" % kv for kv in short.items())))
+    fresh = sorted(name for _, name, L, _, _ in rows if L == 0)
+    if fresh:
+        print("\nNew nodes: %s." % ", ".join(fresh))
+        print("If one opens a new system, name its general problem and start research now (SKILL.md 6.6).")
 
 
 def cmd_plan(argv):

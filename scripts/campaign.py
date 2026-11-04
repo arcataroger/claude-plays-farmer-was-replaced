@@ -224,8 +224,10 @@ def decide(st, status, args, base, bridge):
             st["phase"], st["remaining"], st["last_progress"] = nxt, None, now
             st["phase_seen"], st["phase_since"] = nxt, now
             if nxt == "complete":
-                return "phase leaderboards done (%s): campaign complete. Report each phase's numbers." % detail
-            return "phase %s done (%s): move to %s and report the phase's numbers." % (phase, detail, nxt)
+                return ("phase leaderboards done (%s): campaign complete. Report each phase's numbers and the "
+                        "research you started." % detail)
+            return ("phase %s done (%s): move to %s. Report the phase's numbers and the research you started, "
+                    "or why a system needed none." % (phase, detail, nxt))
     if phase == "complete":
         return ("campaign complete. Set phase back in %s only when an update reveals new nodes, "
                 "achievements or boards." % args.state)

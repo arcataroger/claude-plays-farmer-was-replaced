@@ -59,6 +59,12 @@ References:
 4. For a fresh campaign, run `tfwr_bridge.py new-run`, then `scripts/journal.py init`.
 5. At the start of every session, and after any `new-run` or `load-save`, run `scripts/unlocks.py can`. Write only what it lists.
 
+**After a game update, repair and repatch.** An update overwrites the patched game:
+1. In Steam, run Verify integrity of game files.
+2. Rerun the bridge installer.
+3. On macOS, start the game with `run_bepinex.sh`, never Steam's Play button (bridge README).
+4. Regenerate `references/tech_tree.json`.
+
 ## 4. The campaign loop
 Play as one self-pacing loop with three phases. Apply sections 5–7 inside every phase.
 1. **Phase 1: max the tech tree.** Buy every visible node to its max level. Drive the early game by hand: the economy driver and the log convention need Debug, Costs, Auto_Unlock and the core language unlocks first. The driver says which are missing. Look ahead only at visible nodes. Done when no unlock has a next-level cost (check in-game with `get_cost` over `Unlocks`).
@@ -93,7 +99,7 @@ The game is about inventing efficient solutions. Waiting and brute force come la
 3. **Never estimate time or savings from intuition.** LLMs judge time badly. Time phases with `get_time()` and `get_tick_count()`, or A/B the variants.
 4. **A/B on fixed seeds.** Stage each variant (`set v.py --window claude_v_a`), run a bench in `main` that calls `simulate(name, unlocks, items, {}, seed, speedup)` on 2–3 seeds per variant, and compare game seconds. Keep a change only when every seed improves or the mean improves clearly.
 5. **Profile before rewriting.** The part that looks slow on screen is often not the cost. Log each phase's time first.
-6. **Research hard problems early.** When a doc page or unlock reveals a hard problem, start background research while you keep playing:
+6. **Research every new system before you write its farm.** Treat this as a trigger, not advice. `unlocks.py next` lists newly visible nodes. When a node or doc page reveals a new system, name its general problem (section 5.5). Then start background research and keep playing. If you judge that a system needs no research, record why in the journal:
    1. Brief at most two research agents at once.
    2. Describe the problem in general terms; never name this game in queries or briefs.
    3. Tell them to skip any page that mentions this game and to report general algorithms with sources.
@@ -140,7 +146,7 @@ A run must leave enough to replay, audit and score it.
 1. Record milestones with `scripts/journal.py step --goal "..." --check '{...}' --script FILE --notes "..."`. Notes hold what a replayer needs: why the script looks as it does, and what you measured. `--buy` refuses a purchase whose level didn't rise; in `--check`, a plain name means "owned at any level", and `trees_2` means level 2.
 2. Keep every script, bench result and research report in the journal, not in this skill. This skill stays free of solutions.
 3. The bridge writes an audit log and archives every program it runs (bridge README, "Audit"). Mark any human help with `tfwr_bridge.py intervene "what the user did"`.
-4. End each phase with a numbers report: nodes maxed, achievements unlocked, board times before and after, wall-clock and game time.
+4. End each phase with a numbers report: nodes maxed, achievements unlocked, board times before and after, wall-clock and game time. List the research you started per system, or why a system needed none.
 
 ## 10. When something fails
 1. Read the output for the game's error, then run `tfwr.py errors <word>` for the full text. If the quoted line looks wrong, take a screenshot: the code window marks the real line.
