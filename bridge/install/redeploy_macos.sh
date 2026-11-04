@@ -9,7 +9,7 @@
 #   1. Build. On a failure, print the errors and stop; the game keeps running.
 #   2. Compare the new DLL with the deployed one. If they match, stop (nothing to do).
 #   3. Save the game, keep the old DLL as TfwrBridge.dll.prev, copy the new one in.
-#   4. Quit the game and wait until its process is gone.
+#   4. Quit the game and wait until its process is gone. Rebuild a stale app copy.
 #   5. Relaunch through run_bepinex.sh and wait for the bridge to answer.
 #      If it never answers, restore the old DLL and print the launch log.
 #   6. Press Start and wait until the farm is loaded.
@@ -25,6 +25,7 @@ while [[ "${1:-}" == --* ]]; do
     shift
 done
 here="$(cd "$(dirname "$0")/.." && pwd)"
+source "$here/install/macos_clone.sh"
 game_dir="${1:-$HOME/Library/Application Support/Steam/steamapps/common/The Farmer Was Replaced}"
 client=(python3 "$here/client/tfwr_bridge.py")
 logs="$HOME/.cache/tfwr-bridge"
@@ -78,7 +79,7 @@ say "swapped the DLL"
 # 4. Quit and wait for the process to go.
 #    If it ignores the polite quit for 10 s, force it, so the ping below can
 #    only reach the new instance.
-game_proc="TheFarmerWasReplaced.app/Contents/MacOS"
+game_proc="TheFarmerWasReplaced(-Bridge)?\.app/Contents/MacOS"
 pkill -f "$game_proc" || true
 for i in $(seq 1 60); do
     pgrep -f "$game_proc" > /dev/null || break
@@ -90,23 +91,9 @@ if pgrep -f "$game_proc" > /dev/null; then
     exit 1
 fi
 
-# 4b. Keep the app's code signature intact. Any extra file inside the bundle (early
-#     BepInEx runs wrote preloader_*.log into Contents/MacOS) makes macOS call the app
-#     "damaged" and refuse to open it (2026-11-03). Move strays to our log folder.
-for f in "$game_dir"/*.app/Contents/MacOS/preloader_*.log; do
-    [[ -e "$f" ]] && mv "$f" "$logs/" && say "moved a stray $(basename "$f") out of the app bundle"
-done
-
-# 4c. A Steam update restores the notarized build, and its hardened runtime drops
-#     DYLD_INSERT_LIBRARIES, so Doorstop can't load (2026-11-03). Re-sign it ad hoc,
-#     as install_macos.sh does. Steam's "Verify integrity" restores the original.
-app_bundle=$(ls -d "$game_dir"/*.app | head -1)
-# Capture first: under pipefail, `| grep -q` kills codesign early and the test goes false.
-sign_info=$(codesign -d --verbose=2 "$app_bundle" 2>&1 || true)
-if [[ "$sign_info" == *"(runtime)"* ]]; then
-    codesign --force --deep --sign - "$app_bundle"
-    say "re-signed the app ad hoc: a game update restored the hardened runtime"
-fi
+# 4b. A game update changes Steam's app, so the patched copy goes stale. Rebuild it.
+refreshed=$(refresh_clone "$game_dir")
+[[ -z "$refreshed" ]] || say "$refreshed"
 
 # 5. Relaunch, detached from this script's output so the caller never waits on it.
 #    Redirect the whole subshell, not just the command inside it. On macOS the

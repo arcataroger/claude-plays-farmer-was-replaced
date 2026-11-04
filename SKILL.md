@@ -59,10 +59,10 @@ References:
 4. For a fresh campaign, run `tfwr_bridge.py new-run`, then `scripts/journal.py init`.
 5. At the start of every session, and after any `new-run` or `load-save`, run `scripts/unlocks.py can`. Write only what it lists.
 
-**After a game update, repair and repatch.** An update overwrites the patched game:
-1. In Steam, run Verify integrity of game files.
-2. Rerun the bridge installer.
-3. On macOS, start the game with `run_bepinex.sh`, never Steam's Play button (bridge README).
+**After a game update, repatch.**
+1. On Windows, rerun the bridge installer: the update can overwrite its files.
+2. On macOS, rerun the installer or `redeploy_macos.sh`: each rebuilds the stale bridge copy of the app.
+3. On macOS, start the bridge with `run_bepinex.sh`. Steam's Play button starts the game without it.
 4. Regenerate `references/tech_tree.json`.
 
 ## 4. The campaign loop

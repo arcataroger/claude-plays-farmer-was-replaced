@@ -71,9 +71,9 @@ During `simulate()`, item counts come from the sandbox, not your farm (see "Watc
    2. It unpacks BepInEx into the game, then copies `BepInEx/core` into `bridge/vendor/BepInEx/core` for the build.
    3. It builds the plugin against the game's own DLLs.
    4. It adds `steam_appid.txt` and sets the BepInEx entrypoint.
-   5. It re-signs the app ad hoc, because the hardened runtime blocks Doorstop's library injection. It backs up the original signature to `~/.cache/tfwr-bridge/original-signature/` first.
+   5. It clones the app to `TheFarmerWasReplaced-Bridge.app` and re-signs only the clone ad hoc, because the hardened runtime blocks Doorstop's library injection. Steam's own app stays untouched, and the clone costs almost no disk on APFS.
 3. Start Steam and sign in. Leave the game's Launch Options empty.
-4. Start the game directly, not with Steam's Play button:
+4. Start the bridge copy:
    ```bash
    cd "<game folder>" && nohup ./run_bepinex.sh > /dev/null 2>&1 &
    ```
@@ -82,12 +82,9 @@ During `simulate()`, item counts come from the sandbox, not your farm (see "Watc
    python3 bridge/client/tfwr_bridge.py ping
    ```
 
-Steam's Play button refuses the re-signed app. macOS calls it "damaged" and offers Move to Trash. If you see that dialog, press Cancel and use step 4. The file is fine, and Steam still tracks a game you start this way.
+Steam's Play button starts the plain game, without the bridge. Both apps share one save folder, so run only one at a time.
 
-After a game update:
-1. In Steam, choose Properties → Installed Files → Verify integrity of game files.
-2. Rerun the installer.
-3. Start the game with step 4.
+After a game update, rerun the installer or `redeploy_macos.sh`. Each rebuilds a stale copy. If you installed before the copy existed and Play shows "damaged", press Cancel and run Verify integrity of game files once.
 
 ### Windows
 
@@ -135,7 +132,7 @@ Last, it runs `tidy` to restore the camera and window layout, which every restar
 ### Uninstall
 
 1. If you set a Steam launch option for an older install, remove it (macOS only).
-2. In Steam, choose Properties → Installed Files → Verify integrity of game files. Steam restores the original app and signature.
+2. Delete `TheFarmerWasReplaced-Bridge.app` (macOS only).
 3. Delete the `BepInEx` folder, `run_bepinex.sh`, `libdoorstop.dylib` (macOS) or `winhttp.dll` and `doorstop_config.ini` (Windows).
 
 ## Use

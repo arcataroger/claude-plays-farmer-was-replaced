@@ -8,7 +8,8 @@
 #   2. Download BepInEx, check its SHA-256 and unpack it into the game (skipped when present).
 #   3. Copy BepInEx/core into bridge/vendor/BepInEx/core: the build references it.
 #   4. Build the plugin against the game's own DLLs.
-#   5. Configure BepInEx, re-sign the app ad hoc and copy the plugin in.
+#   5. Configure BepInEx and copy the plugin in.
+#   6. Clone the app and re-sign only the clone ad hoc. Steam's app stays untouched.
 set -euo pipefail
 
 BEPINEX_TAG="v5.4.23.6"
@@ -16,6 +17,7 @@ BEPINEX_ZIP="BepInEx_macos_universal_5.4.23.6.zip"
 BEPINEX_SHA256="2e711e21f6570da964fce4654b1976500dbe043f61778bce0008500078564638"
 
 here="$(cd "$(dirname "$0")/.." && pwd)"
+source "$here/install/macos_clone.sh"
 game_dir="${1:-$HOME/Library/Application Support/Steam/steamapps/common/The Farmer Was Replaced}"
 plugin="$here/plugin/bin/Release/TfwrBridge.dll"
 vendor="$here/vendor/BepInEx/core"
@@ -42,8 +44,6 @@ if [ ! -d "$game_dir/BepInEx/core" ]; then
     echo "$BEPINEX_SHA256  $tmp/$BEPINEX_ZIP" | shasum -a 256 -c -
     unzip -q -o "$tmp/$BEPINEX_ZIP" -d "$game_dir"
     rm -rf "$tmp"
-    # Point the launcher at the game bundle.
-    sed -i '' 's|^executable_name=""|executable_name="TheFarmerWasReplaced.app"|' "$game_dir/run_bepinex.sh"
     chmod +x "$game_dir/run_bepinex.sh"
     echo "Installed BepInEx $BEPINEX_TAG"
 fi
@@ -69,25 +69,27 @@ else
     printf '\n[Preloader.Entrypoint]\nAssembly = UnityEngine.CoreModule.dll\nType = MonoBehaviour\nMethod = .cctor\n' >> "$cfg"
 fi
 
-# The hardened runtime drops DYLD_INSERT_LIBRARIES, so Doorstop can't load.
-# An ad-hoc signature (no hardened runtime) fixes that. We back up the original first;
-# Steam's "Verify integrity of game files" restores it too.
-app="$game_dir/TheFarmerWasReplaced.app"
-backup="$HOME/.cache/tfwr-bridge/original-signature"
-# Capture first: under pipefail, `| grep -q` kills codesign early and the test goes false.
-sign_info=$(codesign -d --verbose=2 "$app" 2>&1 || true)
-if [[ "$sign_info" == *"(runtime)"* ]]; then
-    mkdir -p "$backup"
-    cp -R "$app/Contents/_CodeSignature" "$backup/" 2>/dev/null || true
-    cp "$app/Contents/MacOS/TheFarmerWasReplaced" "$backup/"
-    codesign --force --deep --sign - "$app"
-    echo "Re-signed the app ad hoc (backup in $backup)"
-fi
-
 mkdir -p "$game_dir/BepInEx/plugins/TfwrBridge"
 cp "$plugin" "$game_dir/BepInEx/plugins/TfwrBridge/"
 echo "Installed plugin -> $game_dir/BepInEx/plugins/TfwrBridge/TfwrBridge.dll"
+
+# 6. The patched copy. The launcher runs it; Steam keeps its own app.
+if pgrep -f "TheFarmerWasReplaced(-Bridge)?\.app/Contents/MacOS" > /dev/null; then
+    echo "Quit the game, then rerun this installer: it can't replace the app copy while the game runs." >&2
+    exit 1
+fi
+refresh_clone "$game_dir"
+sed -i '' "s|^executable_name=.*|executable_name=\"$BRIDGE_APP\"|" "$game_dir/run_bepinex.sh"
+
+# An older install re-signed Steam's app in place. Verify restores it.
+sign_info=$(codesign -d --verbose=2 "$game_dir/TheFarmerWasReplaced.app" 2>&1 || true)
+if [[ "$sign_info" != *"(runtime)"* ]]; then
+    echo
+    echo "Steam's app still has an old ad-hoc signature, so its Play button shows \"damaged\"."
+    echo "To fix that, run Verify integrity of game files in Steam. The bridge copy keeps working."
+fi
+
 echo
-echo "Start Steam, then start the game directly (not with Steam's Play button):"
+echo "To play with the bridge, start Steam, then run:"
 echo "  cd \"$game_dir\" && nohup ./run_bepinex.sh > /dev/null 2>&1 &"
-echo "Steam's Play button makes macOS call the re-signed app \"damaged\". Press Cancel if you see that."
+echo "Steam's Play button starts the plain game, without the bridge."
