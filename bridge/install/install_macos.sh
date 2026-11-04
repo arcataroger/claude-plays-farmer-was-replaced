@@ -74,7 +74,9 @@ fi
 # Steam's "Verify integrity of game files" restores it too.
 app="$game_dir/TheFarmerWasReplaced.app"
 backup="$HOME/.cache/tfwr-bridge/original-signature"
-if codesign -d --verbose=2 "$app" 2>&1 | grep -q 'flags=.*runtime'; then
+# Capture first: under pipefail, `| grep -q` kills codesign early and the test goes false.
+sign_info=$(codesign -d --verbose=2 "$app" 2>&1 || true)
+if [[ "$sign_info" == *"(runtime)"* ]]; then
     mkdir -p "$backup"
     cp -R "$app/Contents/_CodeSignature" "$backup/" 2>/dev/null || true
     cp "$app/Contents/MacOS/TheFarmerWasReplaced" "$backup/"

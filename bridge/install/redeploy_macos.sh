@@ -97,6 +97,17 @@ for f in "$game_dir"/*.app/Contents/MacOS/preloader_*.log; do
     [[ -e "$f" ]] && mv "$f" "$logs/" && say "moved a stray $(basename "$f") out of the app bundle"
 done
 
+# 4c. A Steam update restores the notarized build, and its hardened runtime drops
+#     DYLD_INSERT_LIBRARIES, so Doorstop can't load (2026-11-03). Re-sign it ad hoc,
+#     as install_macos.sh does. Steam's "Verify integrity" restores the original.
+app_bundle=$(ls -d "$game_dir"/*.app | head -1)
+# Capture first: under pipefail, `| grep -q` kills codesign early and the test goes false.
+sign_info=$(codesign -d --verbose=2 "$app_bundle" 2>&1 || true)
+if [[ "$sign_info" == *"(runtime)"* ]]; then
+    codesign --force --deep --sign - "$app_bundle"
+    say "re-signed the app ad hoc: a game update restored the hardened runtime"
+fi
+
 # 5. Relaunch, detached from this script's output so the caller never waits on it.
 #    Redirect the whole subshell, not just the command inside it. On macOS the
 #    subshell lingers as the game's parent; if it keeps our stdout, a caller

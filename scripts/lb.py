@@ -74,7 +74,8 @@ def main(argv):
                 print(f"{board}: watchdog stopped the run: {stopped}")
             b.call("lb_ok")
             close_win()
-            return 0
+            # Exit 3 on a failed board, so a caller can tell pass from fail.
+            return 3 if "fail" in str(st.get("result", "")).lower() else 0
         # A run that ended with no result screen failed: say why instead of waiting.
         if not st.get("running") and not b.status().get("executing"):
             open_windows = [w["name"] for w in b.windows()]
