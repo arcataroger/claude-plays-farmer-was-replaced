@@ -138,8 +138,18 @@ def lit(n):
     return "%d" % n if n.is_integer() else repr(n)
 
 
+def wrapped(items, opening, closing, per_line=4):
+    """Formats a list literal over short lines.
+
+    A code window is as wide as its longest line, and that width limits the whole
+    view's zoom (2026-11-04: one long WANT line held a 4K screen at zoom 0.2).
+    """
+    rows = [", ".join(items[i:i + per_line]) for i in range(0, len(items), per_line)]
+    return opening + ",\n\t".join(rows) + closing
+
+
 def unlock_list(names):
-    return "[" + ", ".join("Unlocks.%s" % u for u in names) + "]"
+    return wrapped(["Unlocks.%s" % u for u in names], "[", "]")
 
 
 def bare(name, prefix):
@@ -409,7 +419,7 @@ class Driver:
         res = self.reserves()
         # Cheapest first, relative to what we hold, so small buys don't wait behind big ones.
         order = sorted(costs, key=lambda u: max(v / max(stock.get(i, 0), 1) for i, v in costs[u].items()))
-        reserve = "{" + ", ".join("Items.%s: %s" % (i, lit(n)) for i, n in sorted(res.items()) if n > 0) + "}"
+        reserve = wrapped(["Items.%s: %s" % (i, lit(n)) for i, n in sorted(res.items()) if n > 0], "{", "}")
         want = unlock_list(order)
         if not order:
             return []

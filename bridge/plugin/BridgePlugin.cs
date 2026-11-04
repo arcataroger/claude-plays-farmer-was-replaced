@@ -32,7 +32,7 @@ namespace TfwrBridge
     public class BridgePlugin : BaseUnityPlugin
     {
         public const string Guid = "dev.tfwr.bridge";
-        public const string Version = "0.2.0";
+        public const string Version = "0.2.1";
 
         private class Job
         {
@@ -103,8 +103,7 @@ namespace TfwrBridge
             // Record the game build: Steam can update the game mid-project (2026-11-03),
             // and benchmark runs must say which build they played.
             Audit("plugin_start", Kv("plugin", Version), Kv("unity", Application.unityVersion),
-                  Kv("platform", Application.platform.ToString()), Kv("game_version", Application.version),
-                  Kv("steam_buildid", SteamBuildId()));
+                  Kv("platform", Application.platform.ToString()), Kv("steam_buildid", SteamBuildId()));
             serving = true;
             var thread = new Thread(Serve) { IsBackground = true, Name = "TfwrBridge" };
             thread.Start();
@@ -1062,6 +1061,7 @@ namespace TfwrBridge
                 Kv("goal_have", goalItem >= 0 ? MainSim.Inst.GetNumItem(goalItem) : 0),
                 Kv("goal_reached", goalItem >= 0 && MainSim.Inst.GetNumItem(goalItem) >= goalTarget),
                 Kv("watchdog_stopped", wdStopped),
+                Kv("doc_windows", DocCount()),
                 Kv("focused", Application.isFocused));
         }
 
@@ -1238,6 +1238,7 @@ namespace TfwrBridge
             var ws = Ws;
             var canvas = ws.editorCanvas;
             Camera cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+            CloseDocs();  // unlock() opens a doc page per purchase; only code windows belong on screen
             var all = new List<Window>();
             foreach (var w in ws.workspaceContainer.GetComponentsInChildren<Window>())
             {
@@ -1633,23 +1634,34 @@ namespace TfwrBridge
             return farm.xMin >= 0f && farm.xMax <= Screen.width && farm.yMin >= Screen.height * 0.08f && farm.yMax <= Screen.height * 0.92f;
         }
 
-        // Zoom growth needs hysteresis: growing also widens the code windows, which can
-        // force a shrink right back. Grow at most every 20 s, and never within 60 s of a
-        // shrink (2026-11-04: shrink-only zoom ratcheted down to unreadable on a 4K TV).
+        // Zoom must be able to grow: shrink-only zoom ratcheted down to unreadable on a 4K
+        // TV (2026-11-03). Grow at most every 10 s, and never within 30 s of a shrink.
         private float lastShrinkAt = -999f, lastGrowAt = -999f;
-        private const float GrowWhenFitAbove = 1.6f, MaxTidyZoom = 0.6f;
+        private const float GrowWhenFitAbove = 1.3f, MaxTidyZoom = 0.6f;
 
+        // The zoom factor k that fits the farm beside the code column. Zoom scales the
+        // column too, so the farm's width at k must fit what the column at k leaves free:
+        // k * farm.width <= 0.92 * (Screen.width - k * column). Ignoring that made a grow
+        // widen the column and force a shrink one second later (2026-11-04, 3840x2160).
         private float FitScale(Rect farm)
         {
-            float left = Mathf.Max(columnRight, 0f) + 16f;
-            return Mathf.Min((Screen.width - left) * 0.92f / farm.width, Screen.height * 0.72f / farm.height);
+            float column = Mathf.Max(columnRight, 0f) + 16f;
+            return Mathf.Min(0.92f * Screen.width / (farm.width + 0.92f * column), Screen.height * 0.72f / farm.height);
+        }
+
+        private int DocCount()
+        {
+            int n = 0;
+            foreach (var w in Ws.workspaceContainer.GetComponentsInChildren<Window>())
+                if (w.GetComponent<CodeWindow>() == null && w.gameObject.activeInHierarchy && w.movable) n++;
+            return n;
         }
 
         private bool TooSmall(Rect farm)
         {
             float now = Time.unscaledTime;
             return FitScale(farm) > GrowWhenFitAbove && Ws.cameraController.zoom < MaxTidyZoom - 0.01f
-                   && now - lastShrinkAt > 60f && now - lastGrowAt > 20f;
+                   && now - lastShrinkAt > 30f && now - lastGrowAt > 10f;
         }
 
         private void StepTidy()
@@ -1660,6 +1672,7 @@ namespace TfwrBridge
             if (ws == null || !ws.gameObject.activeInHierarchy) return;
             if (TransitionTargetField?.GetValue(ws) != null) return;
             if (Input.GetMouseButton(0) || Input.GetMouseButton(1) || Input.GetMouseButton(2)) return;
+            if (runPending && DocCount() > 0) CloseDocs();  // purchases from code open doc pages
             if (!TryFarmScreenBounds(out Rect farm)) return;
             bool small = TooSmall(farm);
             if (!small && !Covered(farm) && OnScreen(farm) && KeptVisible()) return;
@@ -1677,7 +1690,7 @@ namespace TfwrBridge
             }
             else if (small)
             {
-                Zoom(Mathf.Clamp(z * scale * 0.9f, 0.08f, MaxTidyZoom));
+                Zoom(Mathf.Clamp(z * scale * 0.95f, 0.08f, MaxTidyZoom));
                 lastGrowAt = Time.unscaledTime;
             }
             StartCentering(new Job { Args = new[] { "tidy" } }, (left + Screen.width) * 0.5f / Screen.width, 0.5f);

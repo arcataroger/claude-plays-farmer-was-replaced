@@ -98,6 +98,10 @@ During `simulate()`, item counts come from the sandbox, not your farm (see "Watc
    python bridge\client\tfwr_bridge.py ping
    ```
 
+After a restart on Windows:
+1. A launch through Steam can stall on a one-time Big Picture notice (for example, the On-Screen Keyboard notice). Steam's `logs/console_log.txt` then shows `waiting for user response to ShowInterstitials`. Dismiss it with Enter in the Big Picture window. An unattended restart hangs here.
+2. If `ping` works but `status` says `in_game` is false, run `tfwr_bridge.py play`.
+
 ### Build by hand
 
 The installers build for you. To build alone, run this from the skill folder:
@@ -185,6 +189,9 @@ out, secs, state = b.run_and_wait("main", 'quick_print(get_world_size())')
 ```
 
 `state` is `finished`, `error`, `warning`, `goal`, `timeout` or `watchdog`. Treat `watchdog` as a failure, like `error`.
+
+### Windows on screen
+Only code windows stay on screen. Doc pages that `unlock()` opens close during bridge runs and on `arrange`. `status` reports them as `doc_windows`. The tidy guard also keeps zoom in step with the screen: it fits the farm and the code column together, so long code lines lower the zoom. Keep lines short; the linter warns over 100 characters.
 
 ### Watchdog
 

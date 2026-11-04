@@ -13,6 +13,7 @@ Exit code: 0 = no errors (warnings allowed), 1 = errors found, 2 = could not par
 Every finding cites the in-game error string it mirrors, where one exists.
 
 Two method rules hold no game errors; they enforce the skill's own conventions:
+  long-line    WARNING for lines over 100 characters: they widen the code window and shrink the view.
   no-log       WARNING when a loop plants, harvests, digs, places or moves (directly or
                through your own functions) but the file has no PHASE or SUMMARY string.
                See scripts/tfwr_log.md. We skip library files: files whose top level
@@ -463,6 +464,11 @@ class Linter(ast.NodeVisitor):
             user = {x.id for x in ast.walk(tree) if isinstance(x, ast.Name) and isinstance(x.ctx, ast.Store)}
             self.f += unlock_findings(tree, self.save_dir, user | self._user_funcs)
         self.f += method_findings(tree, _owns(self.save_dir, "debug"))
+        long_lines = [i for i, ln in enumerate(self.src.split("\n"), 1) if len(ln.expandtabs(4)) > 100]
+        if long_lines:
+            self.f.append(Finding("warning", long_lines[0],
+                                  "%d line(s) over 100 characters. A code window is as wide as its longest line, "
+                                  "and that width limits the whole view's zoom. Split long lines." % len(long_lines)))
         if self.jump_calls > 1:
             self.f.append(Finding("warning", "?", "jump() appears %d times; it works once per program run." % self.jump_calls,
                                   "error_can_only_jump_once"))

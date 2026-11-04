@@ -132,7 +132,6 @@ def cmd_init(args):
         "unity": info["unity"],
         "plugin": info["plugin"],
         "platform": info["platform"],
-        "game_version": info.get("game_version"),
         "steam_buildid": tfwr.game_build(),
     })
     write_json(os.path.join(run, "steps", "000-fresh-save", "step.json"), {
