@@ -108,6 +108,10 @@ After a restart on Windows:
 1. A launch through Steam can stall on a one-time Big Picture notice (for example, the On-Screen Keyboard notice). Steam's `logs/console_log.txt` then shows `waiting for user response to ShowInterstitials`. Dismiss it with Enter in the Big Picture window. An unattended restart hangs here.
 2. If `ping` works but `status` says `in_game` is false, run `tfwr_bridge.py play`.
 
+**After you switch machines:** Steam can stall a launch with "You are logged in on another computer already playing...". Requesting the launch again doesn't clear it, and an unattended restart hangs there.
+1. Quit the game on the other machine.
+2. Press Continue in the Steam dialog.
+
 ### Build by hand
 
 The installers build for you. To build alone, run this from the skill folder:
