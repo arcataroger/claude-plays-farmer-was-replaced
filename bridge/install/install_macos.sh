@@ -88,5 +88,6 @@ mkdir -p "$game_dir/BepInEx/plugins/TfwrBridge"
 cp "$plugin" "$game_dir/BepInEx/plugins/TfwrBridge/"
 echo "Installed plugin -> $game_dir/BepInEx/plugins/TfwrBridge/TfwrBridge.dll"
 echo
-echo "Set this Steam launch option (Properties > General > Launch Options):"
-echo "  \"$game_dir/run_bepinex.sh\" %command%"
+echo "Start Steam, then start the game directly (not with Steam's Play button):"
+echo "  cd \"$game_dir\" && nohup ./run_bepinex.sh > /dev/null 2>&1 &"
+echo "Steam's Play button makes macOS call the re-signed app \"damaged\". Press Cancel if you see that."

@@ -42,7 +42,7 @@ def find_stats(override=None):
         if os.path.isfile(os.path.join(d, f"UserGameStatsSchema_{APP}.bin")):
             return d
     raise SystemExit("no Steam achievement cache for this game in: " + ", ".join(candidates)
-                     + "\nlaunch the game through Steam once, or pass --stats DIR")
+                     + "\nlaunch the game once with Steam running, or pass --stats DIR")
 
 
 def parse(b, i=0):
@@ -82,7 +82,7 @@ def load(stats):
         schema = parse(f.read())[0][APP]["stats"]
     users = glob.glob(os.path.join(stats, f"UserGameStats_*_{APP}.bin"))
     if not users:
-        raise SystemExit("no user stats file; launch the game through Steam once")
+        raise SystemExit("no user stats file; launch the game once with Steam running")
     with open(max(users, key=os.path.getmtime), "rb") as f:
         cache = parse(f.read())[0]["cache"]
     rows = []

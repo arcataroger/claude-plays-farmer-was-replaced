@@ -72,13 +72,22 @@ During `simulate()`, item counts come from the sandbox, not your farm (see "Watc
    3. It builds the plugin against the game's own DLLs.
    4. It adds `steam_appid.txt` and sets the BepInEx entrypoint.
    5. It re-signs the app ad hoc, because the hardened runtime blocks Doorstop's library injection. It backs up the original signature to `~/.cache/tfwr-bridge/original-signature/` first.
-3. In Steam, open the game's Properties → General → Launch Options. Paste the line the installer printed:
-   `"<game folder>/run_bepinex.sh" %command%`
-4. Start the game from Steam.
-5. Check the bridge:
+3. Start Steam and sign in. Leave the game's Launch Options empty.
+4. Start the game directly, not with Steam's Play button:
+   ```bash
+   cd "<game folder>" && nohup ./run_bepinex.sh > /dev/null 2>&1 &
+   ```
+5. Check the bridge. It answers after about 6 s:
    ```bash
    python3 bridge/client/tfwr_bridge.py ping
    ```
+
+Steam's Play button refuses the re-signed app. macOS calls it "damaged" and offers Move to Trash. If you see that dialog, press Cancel and use step 4. The file is fine, and Steam still tracks a game you start this way.
+
+After a game update:
+1. In Steam, choose Properties → Installed Files → Verify integrity of game files.
+2. Rerun the installer.
+3. Start the game with step 4.
 
 ### Windows
 
@@ -125,7 +134,7 @@ Last, it runs `tidy` to restore the camera and window layout, which every restar
 
 ### Uninstall
 
-1. Remove the Steam launch option (macOS only).
+1. If you set a Steam launch option for an older install, remove it (macOS only).
 2. In Steam, choose Properties → Installed Files → Verify integrity of game files. Steam restores the original app and signature.
 3. Delete the `BepInEx` folder, `run_bepinex.sh`, `libdoorstop.dylib` (macOS) or `winhttp.dll` and `doorstop_config.ini` (Windows).
 

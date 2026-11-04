@@ -14,7 +14,7 @@ Unofficial fan project. It is not affiliated with or endorsed by the game's deve
 
 ## Install
 Prerequisites:
-- the game on Steam. Tested on Windows. macOS: worked before the November 2026 game update, and we haven't confirmed it since; rerun the installer after each update. Linux: untested;
+- the game on Steam. Tested on Windows and macOS. On macOS, start the game with `run_bepinex.sh`, not Steam's Play button, and rerun the installer after each update (`bridge/README.md`). Linux: untested;
 - Python 3.9 or newer (`python3` on macOS and Linux, `python` on Windows);
 - the .NET SDK, to build the bridge;
 - Claude Code, or another agent harness that loads skills.
