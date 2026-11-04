@@ -100,13 +100,14 @@ The game is about inventing efficient solutions. Waiting and brute force come la
 8. **Fast-forward only waits.** Speed-up never replaces a better algorithm. `get_time()` counts game time, so fast-forward changes your wait, not your numbers.
 
 ## 7. Log, simulate and audit every loop
-No loop is trusted until its logs prove it works, and a running loop keeps proving it.
-1. Follow `scripts/tfwr_log.md`: each phase prints `PHASE <name> t <time> work <successful actions> left <remaining>`, and each run ends with one `SUMMARY` line. The game keeps only recent output lines, so summaries must come last.
-2. Run `scripts/precheck.py` on every new or changed script. A phase with `work 0` is a bug until you explain it.
-3. Watch one real run on screen and compare it with the log.
-4. In production, keep the log lines on. The economy driver archives every slice's output and stops on any error or warning.
-5. Every few check-ins, read a sample of raw output, not just summaries. Look for zero-work phases, slow phases, unexpected ground or entity types, and drifting counts.
-6. Treat a loop's summary as a claim, not proof.
+No loop is trusted until its logs prove it works, and a running loop keeps proving it. These steps are mandatory from your first script, not only for long loops; quick early-game scripts need them most, because they run blind.
+1. `run` and `farm` lint every script against the save and refuse on errors. Use `--no-lint` only for throwaway probes. From the moment you own Debug, every script logs.
+2. Follow `scripts/tfwr_log.md`: each phase prints `PHASE <name> t <time> work <successful actions> left <remaining>`, and each run ends with one `SUMMARY` line. The game keeps only recent output lines, so summaries must come last.
+3. Once you own Simulation, run `scripts/precheck.py` on every new or changed script. A phase with `work 0` is a bug until you explain it.
+4. Watch one real run on screen and compare it with the log.
+5. In production, keep the log lines on. The economy driver archives every slice's output and stops on any error or warning.
+6. Every few check-ins, read a sample of raw output, not just summaries. Look for zero-work phases, slow phases, unexpected ground or entity types, and drifting counts.
+7. Treat a loop's summary as a claim, not proof.
 
 **Script habits that prevent silent failure:**
 1. Check every action's return value; a silent failure becomes an endless loop.

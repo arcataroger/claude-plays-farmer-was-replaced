@@ -23,6 +23,7 @@ import re
 import os
 import shutil
 import socket
+import subprocess
 import sys
 import time
 
@@ -488,6 +489,29 @@ def b64(text):
     return base64.b64encode(text.encode("utf-8")).decode("ascii")
 
 
+def lint_passes(bridge, path):
+    """Lints a script against the current save before it runs.
+
+    A rule the agent must remember is optional in practice: an agent skipped lint for
+    a whole session (2026-11-04). So run and farm lint for it and refuse on any ERROR.
+    """
+    linter = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts", "lint_tfwr.py")
+    if not (os.path.isfile(linter) and os.path.isfile(path)):
+        return True
+    cmd = [sys.executable, linter, path]
+    try:
+        info = bridge.ping()
+        cmd += ["--save-dir", os.path.join(info["data_dir"], "Saves", info["active_save"])]
+    except (BridgeError, KeyError, OSError):
+        pass
+    r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+    if "0 error(s), 0 warning(s)" not in r.stdout:
+        sys.stdout.write(r.stdout)
+    if r.returncode != 0:
+        print("[bridge] lint found errors, so we did not run it. Fix them, or pass --no-lint.")
+    return r.returncode == 0
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--port", type=int, default=DEFAULT_PORT)
@@ -521,7 +545,9 @@ def main(argv=None):
                    help="real seconds per doubling from 2x (default %(default)s; 0 = jump to the top)")
     r.add_argument("--ff-after", type=float, default=AUTO_FF_AFTER,
                    help="real seconds before the fast-forward starts (default %(default)s; 0 = at once)")
+    r.add_argument("--no-lint", action="store_true", help="skip the automatic lint (not for scripts that join a loop)")
     fa = sub.add_parser("farm", help="run an endless farming script in short chunks until a goal; stop on error, warning or stall")
+    fa.add_argument("--no-lint", action="store_true", help="skip the automatic lint (not for scripts that join a loop)")
     fa.add_argument("file")
     fa.add_argument("--goal", required=True, help="ITEM=TARGET, e.g. hay=1500")
     fa.add_argument("--window", default=AGENT_WINDOW)
@@ -600,6 +626,9 @@ def main(argv=None):
         print(f"cannot reach the bridge on port {args.port}: {e}", file=sys.stderr)
         print("Is the game running with BepInEx and the TfwrBridge plugin?", file=sys.stderr)
         return 2
+
+    if args.cmd in ("run", "farm") and not args.no_lint and not lint_passes(bridge, args.file):
+        return 7
 
     try:
         if args.cmd == "farm":

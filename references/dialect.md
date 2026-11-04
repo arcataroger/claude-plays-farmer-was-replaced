@@ -74,5 +74,6 @@ The linter flags all of these.
 The language arrives piece by piece: loops, then if, operators, variables, functions, lists, dicts and import. Some features come from unexpected unlocks (confirmed in-game):
 - `for` loops need the **second Expand level** (doc `expand_2`). With Expand 1 alone, use `while` with a counter.
 - On a fresh save, `get_time()` and `get_tick_count()` need **Timing**, `quick_print()` needs **Debug**, `num_items()` needs **Senses**, and assigning a variable needs **Variables** (verified in-game, 2026-11-04).
+- List literals need **Lists**, and `can_move` needs **Mazes** or **Dinosaurs**, although its tooltip doesn't say so. The linter flags both when you give it `--save-dir`.
 - The game can report a missing-unlock error on the line after the call that caused it. When an error line looks innocent, check the line above it.
 - The game reports a missing unlock as `Unlocks.X must be unlocked before this can be used.` Before you use a feature, confirm the player has it. Check the save's unlock list (`tfwr.py status`) or call `num_unlocked(Unlocks.X) > 0` at runtime. Calling something locked fails with `error_missing_unlock`. Inside `simulate()`, all programming features stay unlocked.

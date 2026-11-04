@@ -7,3 +7,4 @@ bridge/plugin/bin/
 bridge/plugin/obj/
 bridge/dist/
 references/tech_tree.json
+campaign_state.json

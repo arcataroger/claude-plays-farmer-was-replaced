@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Campaign wake-up: read the game and the campaign state, then print ONE next instruction.
 
-usage: campaign.py [--state campaign_state.json] [--workdir DIR] [--leaderboards FILE]
+usage: campaign.py [--state FILE] [--workdir DIR] [--leaderboards FILE]
                    [--idle 90] [--stale-min 60] [--no-probe] [--status-json FILE]
 
 Call it at the start of every /loop turn, and do what the line says. It never starts
@@ -14,7 +14,7 @@ The campaign has three phases, in order:
                 lists no entry with unlocked=false and hidden=false.
   leaderboards  climb the boards. Done when every board in leaderboards.json has done=true.
 
-campaign_state.json (created on first use, next to the default path):
+State file (default ~/.cache/tfwr/campaign_<slot>.json, one per save):
   {"phase": "tree", "last_progress": 0, "remaining": null, "last_busy": 0,
    "runs_finished": 0, "economy_workdir": "economy", "leaderboards": "leaderboards.json"}
 We add phase_seen and phase_since; a driver verdict older than phase_since doesn't count.
@@ -227,9 +227,22 @@ def decide(st, status, args, base, bridge):
             "within a minute." % (idle, phase, left))
 
 
+def default_state_path():
+    """One state file per save slot, so a new save never inherits an old clock."""
+    slot = "unknown"
+    try:
+        from tfwr_bridge import Bridge
+        slot = Bridge(timeout=2).ping().get("active_save") or slot
+    except Exception:
+        pass
+    folder = os.path.expanduser(os.path.join("~", ".cache", "tfwr"))
+    os.makedirs(folder, exist_ok=True)
+    return os.path.join(folder, "campaign_%s.json" % slot)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--state", default="campaign_state.json")
+    p.add_argument("--state", help="state file (default: ~/.cache/tfwr/campaign_<slot>.json, one per save)")
     p.add_argument("--workdir", help="the economy driver's workdir (overrides the state file)")
     p.add_argument("--leaderboards", help="leaderboards.json path (overrides the state file)")
     p.add_argument("--idle", type=float, default=90, help="seconds of idle game before we say so")
@@ -238,6 +251,8 @@ def main(argv=None):
     p.add_argument("--no-probe", action="store_true", help="never run the read-only cost probe")
     p.add_argument("--status-json", help="read status from this file instead of the bridge (tests)")
     a = p.parse_args(argv)
+    if not a.state:
+        a.state = default_state_path()
 
     st = dict(DEFAULT_STATE)
     st.update(load_json(a.state, {}) or {})

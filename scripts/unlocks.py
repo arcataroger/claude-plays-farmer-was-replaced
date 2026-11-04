@@ -38,7 +38,24 @@ def enum_unlocks():
     return [u for u in d["Unlocks"] if "Unlocks." + u not in bad]
 
 
+_saved = []
+
+
+def fresh_save():
+    """Saves the game once per process, so levels can't lag a purchase. No-op without the bridge."""
+    if _saved:
+        return
+    _saved.append(True)
+    try:
+        sys.path.insert(0, os.path.join(HERE, "..", "bridge", "client"))
+        from tfwr_bridge import Bridge
+        Bridge(timeout=2).save()
+    except Exception:
+        pass
+
+
 def save_data(argv):
+    fresh_save()
     saves = tfwr.saves_dir()
     slot = tfwr.pick_slot(saves, argv)
     for p in (os.path.join(saves, slot, "save.json"), os.path.join(saves, slot + ".json")):

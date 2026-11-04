@@ -112,7 +112,8 @@ def check_holds(check, unlocks, items):
         if (items.get(name) or 0) < need:
             unmet.append(f"{name} {items.get(name) or 0} < {need}")
     for u in check.get("unlocks", []):
-        if u not in unlocks:
+        # The save stores levelled nodes with a suffix (trees_2), so accept the plain name.
+        if u not in unlocks and not any(re.fullmatch(re.escape(u) + r"_\d+", x) for x in unlocks):
             unmet.append(f"unlock {u} missing")
     return unmet
 
@@ -211,13 +212,17 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--root", default=DEFAULT_ROOT)
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("init")
+    # --root also works after the subcommand, as the usage text suggests.
+    i = sub.add_parser("init")
+    i.add_argument("--root", default=argparse.SUPPRESS)
     f = sub.add_parser("fail")
+    f.add_argument("--root", default=argparse.SUPPRESS)
     f.add_argument("--goal", required=True)
     f.add_argument("--script", required=True)
     f.add_argument("--output")
     f.add_argument("--notes")
     s = sub.add_parser("step")
+    s.add_argument("--root", default=argparse.SUPPRESS)
     s.add_argument("--goal", required=True)
     s.add_argument("--script")
     s.add_argument("--check", required=True, help='JSON, e.g. \'{"items": {"hay": 5}}\'')
@@ -225,8 +230,8 @@ def main():
     s.add_argument("--output")
     s.add_argument("--seconds", type=float)
     s.add_argument("--notes")
-    sub.add_parser("log")
-    sub.add_parser("path")
+    sub.add_parser("log").add_argument("--root", default=argparse.SUPPRESS)
+    sub.add_parser("path").add_argument("--root", default=argparse.SUPPRESS)
     args = p.parse_args()
     if args.cmd == "init":
         cmd_init(args)
