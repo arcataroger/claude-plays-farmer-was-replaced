@@ -92,7 +92,13 @@ class Bridge:
         return self.call("stop")
 
     def output(self):
-        return self.call("output")["text"]
+        """The game's output text. It cuts each line at 1000 characters, so we flag that.
+
+        output.txt keeps the whole line. A cut line once hid late unlocks from the driver.
+        """
+        text = self.call("output")["text"]
+        return "\n".join(ln + " [line cut at 1000 characters; see output.txt]" if len(ln) == 1000 else ln
+                         for ln in text.split("\n"))
 
     def screenshot(self, path):
         return self.call("screenshot", os.path.abspath(path))

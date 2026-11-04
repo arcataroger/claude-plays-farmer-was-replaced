@@ -105,7 +105,7 @@ The game is about inventing efficient solutions. Waiting and brute force come la
 No loop is trusted until its logs prove it works, and a running loop keeps proving it. These steps are mandatory from your first script, not only for long loops; quick early-game scripts need them most, because they run blind.
 1. `run` and `farm` lint every script against the save and refuse on errors. Use `--no-lint` only for throwaway probes. From the moment you own Debug, every script logs.
 2. Follow `scripts/tfwr_log.md`: each phase prints `PHASE <name> t <time> work <successful actions> left <remaining>`, and each run ends with one `SUMMARY` line. The game keeps only recent output lines, so summaries must come last.
-3. Once you own Simulation, run `scripts/precheck.py` on every new or changed script. A phase with `work 0` is a bug until you explain it.
+3. Once you own Simulation, run `scripts/precheck.py` on every new or changed script. A PASS proves no errors, not payoff: read the gains too. A phase with `work 0` is a bug until you explain it.
 4. Watch one real run on screen and compare it with the log.
 5. In production, keep the log lines on. The economy driver archives every slice's output and stops on any error or warning.
 6. Every few check-ins, read a sample of raw output, not just summaries. Look for zero-work phases, slow phases, unexpected ground or entity types, and drifting counts.
@@ -127,7 +127,7 @@ No loop is trusted until its logs prove it works, and a running loop keeps provi
 ## 8. The bridge
 `bridge/` holds a BepInEx plugin plus a stdlib Python client. It drives the game over `127.0.0.1:7777` without moving the mouse. Read `bridge/README.md` for every command. The rules that matter most:
 1. **Run everything through `main`.** The plugin refuses `run` in other windows. Stage files that `main` needs (imports, `simulate()` and `leaderboard_run()` targets) with `set FILE --window claude_NAME`; the plugin minimizes them and closes them after the run.
-2. **One run:** `tfwr_bridge.py run FILE.py --timeout SECS --wait-for "why"`. Exit 0 finished, 4 watchdog stop, 5 timed out, 6 warning, 7 error.
+2. **One run:** `tfwr_bridge.py run FILE.py --timeout SECS --wait-for "why"`. Exit 0 finished, 4 watchdog stop, 5 timed out, 6 warning, 7 error. When you chain commands, stop on failure (`buy X && journal.py step ...`): a step that runs after a failed one records something that never happened.
 3. **Long farming:** `tfwr_bridge.py farm FILE --goal item=N`. It starts the script once and checks in every chunk; it stops on the goal, an error, a warning or a stall. It checks the goal once per poll, so at high speed it can overshoot a small goal; that's fine.
 4. **Watchdog:** the plugin stops any bridge run after its time limit, or when its goal items stop rising. Set goals with `--goal` or `watchdog --items a,b`; give `simulate()` benches `--stall 0`. Never disable it for an unattended run.
 5. **Status line and captions:** a viewer sees only the game, so never leave the screen unexplained. Give every run a reason (`--wait-for`). End every batch of commands with a caption that stays up while you think: `tfwr_bridge.py say "Claude: <what you found, what you try next>" --seconds 0`. Post one at every decision: a result, a rejected idea, a new plan.

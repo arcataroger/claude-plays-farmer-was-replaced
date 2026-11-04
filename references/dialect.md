@@ -36,6 +36,7 @@ The linter flags all of these.
 - The game rejects a function object used as a condition (`if can_harvest:`). That gives `error_function_as_condition`.
 - `x == 5 or 6` is an error (`error_nonsensical_or`).
 - Sensors can return `None` or `0` for real, distinct states. Write `!= None` and `> 0` explicitly, and never rely on truthiness for sensor values. Check each sensor's tooltip for what `None` means.
+- The bridge's output cuts each line at 1000 characters (measured 2026-11-04); `output.txt` keeps the whole line. Print long data in chunks.
 - `print()` needs at least one argument and works from the start. `quick_print()` writes only to the output log, costs nothing, and needs the Debug unlock.
 
 ## 4. Collections
