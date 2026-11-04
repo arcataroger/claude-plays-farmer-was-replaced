@@ -32,7 +32,7 @@ The line runs between **game metadata** and **world state**. Metadata is what a 
 ## 2. Tools
 Run these from the skill directory. Each prints help with `-h`. On Windows, type `python` where this skill writes `python3`.
 1. `python3 scripts/tfwr.py status|doc [page]|fn NAME|errors [text]|output`: save summary, doc pages, builtin tooltips, error strings, the output log.
-2. `python3 scripts/unlocks.py next|info|levels|plan|probe|parse`: buyable nodes with costs and shortfall, node details, budget plans. They read `references/tech_tree.json`, which you generate locally (section 3) and which shows only visible nodes.
+2. `python3 scripts/unlocks.py next|info|levels|plan|probe|parse`: buyable nodes with costs and shortfall, node details, budget plans. `next` judges each node alone, so one purchase can make the next line unaffordable. They read `references/tech_tree.json`, which you generate locally (section 3) and which shows only visible nodes.
 3. `python3 scripts/achievements.py [--json]`: your Steam achievements, unlocked and locked, with hidden ones hidden.
 4. `python3 scripts/lint_tfwr.py FILE.py --save-dir SLOT_DIR`: Python habits the game rejects, names and features this save hasn't unlocked, loops without log lines, literal coordinates. Fix every ERROR; justify or fix every WARNING.
 5. `python3 scripts/precheck.py FILE.py --seeds 3,8`: lint, then run the script in `simulate()` on fixed seeds, and fail on errors, warnings or zero-work phases. Pass it before any script joins a loop.
@@ -126,11 +126,11 @@ No loop is trusted until its logs prove it works, and a running loop keeps provi
 `bridge/` holds a BepInEx plugin plus a stdlib Python client. It drives the game over `127.0.0.1:7777` without moving the mouse. Read `bridge/README.md` for every command. The rules that matter most:
 1. **Run everything through `main`.** The plugin refuses `run` in other windows. Stage files that `main` needs (imports, `simulate()` and `leaderboard_run()` targets) with `set FILE --window claude_NAME`; the plugin minimizes them and closes them after the run.
 2. **One run:** `tfwr_bridge.py run FILE.py --timeout SECS --wait-for "why"`. Exit 0 finished, 4 watchdog stop, 5 timed out, 6 warning, 7 error.
-3. **Long farming:** `tfwr_bridge.py farm FILE --goal item=N`. It starts the script once and checks in every chunk; it stops on the goal, an error, a warning or a stall. It checks the goal once per poll, so at high speed it can overshoot a small goal by a lot. Pass a low `--ff` when a small goal comes before a scarce item.
+3. **Long farming:** `tfwr_bridge.py farm FILE --goal item=N`. It starts the script once and checks in every chunk; it stops on the goal, an error, a warning or a stall. It checks the goal once per poll, so at high speed it can overshoot a small goal; that's fine.
 4. **Watchdog:** the plugin stops any bridge run after its time limit, or when its goal items stop rising. Set goals with `--goal` or `watchdog --items a,b`; give `simulate()` benches `--stall 0`. Never disable it for an unattended run.
 5. **Status line and captions:** give every run a reason (`--wait-for`), and narrate decisions with `say "..."`, so a viewer can follow along.
 6. **Leaderboards:** `python3 scripts/lb.py BOARD PROGRAM.py [SPEEDUP] [MAX_SECONDS]` (`lb.sh` wraps it). Read each board's start items and goal in `tfwr.py doc unlocks/leaderboard`. Prints inside a board never reach the log, so debug the program in `simulate()` first.
-7. **Speed:** the client ramps fast-forward during runs; the plugin returns to 1x when nothing runs. The player's own speed buttons override it.
+7. **Speed:** leave it to the bridge. The client ramps fast-forward during runs, and the plugin returns to 1x when nothing runs. Never pass `--ff` or set a speed unless the user asks; `--ff 1` turns the ramp off and runs crawl. The player's own speed buttons override it.
 8. **Camera:** the plugin keeps code windows off the farm by itself (`tidy_guard`). Code text follows the screen by default (`text-scale auto`: screen height / 540). Set `tfwr_bridge.py text-scale N` (1 to 8) to override it; the setting persists. Never hand-edit the game's `options.txt`: a bad value broke a save's load in testing.
 
 ## 9. Records for every run
