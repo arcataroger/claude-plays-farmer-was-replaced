@@ -1,10 +1,14 @@
 # Claude plays The Farmer Was Replaced
 
-A Claude Code skill for the programming game *The Farmer Was Replaced* and its mining DLC. It teaches an agent **how** to play well, not **what** to play. It learns each system from the in-game docs and logged experiments. It measures and improves its own drone scripts, and it runs a whole campaign on its own. That campaign maxes the tech tree, unlocks the revealed achievements, then climbs the leaderboards.
+<img width="1920" height="1080" alt="tfwr-mushrooms-1h42m00s" src="https://github.com/user-attachments/assets/663e87c6-53a7-4b2d-90db-fef2bf1b980e" />
+
+A Claude Code skill for the programming game *[The Farmer Was Replaced](https://store.steampowered.com/app/2060160/The_Farmer_Was_Replaced/)* and its mining DLC, *[The Miner Was Replaced](https://store.steampowered.com/app/4521700/The_Miner_Was_Replaced/)*. It teaches an agent **how** to play well, not **what** to play. It learns each system from the in-game docs and logged experiments. It measures and improves its own drone scripts, and it runs a whole campaign on its own. That campaign maxes the tech tree, unlocks the revealed achievements, then climbs the leaderboards.
 
 The skill holds no puzzle solutions on purpose. Every algorithm the agent uses, it has to discover by reading, experimenting, researching and measuring. That keeps the game fun, and it lets you compare agents. Run different models or harnesses on the same skill from a fresh save, and see how each does.
 
 Unofficial fan project. It is not affiliated with or endorsed by the game's developer or publisher. You need your own copy of the game (and the DLC for the mining content).
+
+See a full playthrough from new game to fully unlocked tech tree: https://www.youtube.com/watch?v=vBDjYsDqNGc
 
 ## What's here
 - `SKILL.md`: the skill. The agent reads it first.
