@@ -41,7 +41,7 @@ if (-not $GameDir -or -not (Test-Path (Join-Path $GameDir $Exe))) {
 $sdks = if (Get-Command dotnet -ErrorAction SilentlyContinue) { & dotnet --list-sdks 2>$null } else { @() }
 # The dotnet host alone is not enough: the build needs an SDK, version 8 or later.
 if (-not ($sdks | Where-Object { $_ -match '^(\d+)\.' -and [int]$Matches[1] -ge 8 })) {
-    Write-Error "The build needs the .NET SDK 8 or later: https://dotnet.microsoft.com/download"
+    Write-Error "The build needs the .NET SDK 8 or later, and a runtime alone is not enough. Found SDKs: $(if ($sdks) { $sdks -join ', ' } else { 'none' }). Install one: https://dotnet.microsoft.com/download"
 }
 
 # 2. BepInEx, checksum-verified.

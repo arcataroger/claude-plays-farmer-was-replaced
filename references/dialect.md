@@ -69,6 +69,7 @@ The linter flags all of these.
 - Sensors (`get_*`, `measure`, `can_*`, `num_items`, `prospect_*`) cost 1 tick. `get_time`, `get_tick_count` and `quick_print` cost nothing.
 - Binary operators cost 1 tick each, and so does an `if`. Unary `-`, `not`, calls, variable reads and writes, `return`, `break` and `continue` cost nothing. A `def` costs 1 tick. `pass` costs 1 tick, which makes it a precise delay.
 - Not every action follows the tick model; some take fixed time. Time an unfamiliar action with `get_time()` before you plan around it.
+- `get_time()` restarts from 0 when the game restarts, so don't use it as a clock across restarts.
 - Measure before you optimize: `t = get_time()` ... `quick_print(get_time() - t)`.
 
 ## 8. Progressive unlocks
